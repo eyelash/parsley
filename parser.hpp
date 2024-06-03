@@ -1,0 +1,417 @@
+#pragma once
+
+#include "common.hpp"
+#include <vector>
+
+template <class U, class... T> struct ContainsType;
+template <class U> struct ContainsType<U>: std::false_type {};
+template <class T0, class... T> struct ContainsType<T0, T0, T...>: std::true_type {};
+template <class U, class T0, class... T> struct ContainsType<U, T0, T...> {
+	static constexpr bool value = ContainsType<U, T...>::value;
+};
+
+namespace parser {
+
+class Context {
+	//const SourceFile* file;
+	const char* position;
+	const char* end;
+public:
+	//ParseContext(const SourceFile* file): file(file), position(file->begin()) {}
+	//constexpr ParseContext(const SourceFile* file, const char* position): file(file), position(position) {}
+	constexpr Context(const char* position, const char* end): position(position), end(end) {}
+	constexpr Context(const StringView& s): position(s.begin()), end(s.end()) {}
+	explicit operator bool() const {
+		return position < end;
+	}
+	/*constexpr bool operator <(const Context& rhs) const {
+		return position < rhs.position;
+	}*/
+	constexpr char operator *() const {
+		return *position;
+	}
+	Context& operator ++() {
+		++position;
+		return *this;
+	}
+	constexpr StringView operator -(const Context& start) const {
+		return StringView(start.position, position - start.position);
+	}
+	/*const char* get_path() const {
+		return file->get_path();
+	}*/
+	/*std::size_t get_position() const {
+		return position - file->begin();
+	}*/
+};
+
+template <class T> class Success {
+public:
+	T value;
+	template <class... A> constexpr Success(A&&... a): value(std::forward<A>(a)...) {}
+};
+template <> class Success<void> {
+public:
+	constexpr Success() {}
+};
+class Failure {
+public:
+	constexpr Failure() {}
+};
+class Error {
+public:
+	constexpr Error() {}
+};
+template <class T> class Result {
+	Variant<Success<T>, Failure, Error> variant;
+public:
+	template <class... A> Result(A&&... a): variant(Success<T>(std::forward<A>(a)...)) {}
+	Result(Failure&& failure): variant(std::move(failure)) {}
+	Result(Error&& error): variant(std::move(error)) {}
+	using type = T;
+	T* get_success() {
+		Success<T>* success = variant.template get<Success<T>>();
+		return success ? &success->value : nullptr;
+	}
+	Failure* get_failure() {
+		return variant.template get<Failure>();
+	}
+	Error* get_error() {
+		return variant.template get<Error>();
+	}
+};
+
+template <class T, class = void> struct HasResultType: std::false_type {};
+template <class T> struct HasResultType<T, std::void_t<typename T::result_type>>: std::true_type {};
+template <class T, bool has_result_type, class M> struct GetResultType;
+template <class T, class M> struct GetResultType<T, true, M> {
+	using type = typename T::result_type;
+};
+template <class T, class R> struct GetResultType<T, false, R (T::*)(Context&) const> {
+	using type = R;
+};
+template <class T> using get_result_type = typename GetResultType<T, HasResultType<T>::value, decltype(&T::parse)>::type;
+
+template <class T> using get_success_type = typename get_result_type<T>::type;
+
+using BasicResult = Result<StringView>;
+template <class... T> using is_basic = std::conjunction<std::is_same<get_result_type<T>, BasicResult>...>;
+
+template <class F> class Char {
+	F f;
+public:
+	constexpr Char(F f): f(f) {}
+	BasicResult parse(Context& context) const {
+		if (context && f(*context)) {
+			++context;
+			return BasicResult();
+		}
+		return Failure();
+	}
+};
+
+class String {
+	StringView s;
+public:
+	constexpr String(const StringView& s): s(s) {}
+	BasicResult parse(Context& context) const {
+		const Context start = context;
+		for (char c: s) {
+			if (!(context && *context == c)) {
+				context = start;
+				return Failure();
+			}
+			++context;
+		}
+		return BasicResult();
+	}
+};
+
+template <class T, class... A> struct SequenceResult;
+template <> struct SequenceResult<Tuple<>> {
+	using type = BasicResult;
+};
+template <class A> struct SequenceResult<Tuple<>, A> {
+	using type = Result<A>;
+};
+template <class... A> struct SequenceResult<Tuple<>, A...> {
+	using type = Result<Tuple<A...>>;
+};
+template <class T0, class... T, class... A> struct SequenceResult<Tuple<T0, T...>, A...> {
+	using type = std::conditional_t<
+		is_basic<T0>::value,
+		typename SequenceResult<Tuple<T...>, A...>::type,
+		typename SequenceResult<Tuple<T...>, A..., get_success_type<T0>>::type
+	>;
+};
+struct SequenceImpl {
+	template <class R, class... P, class... A> static R parse(Context& context, const Tuple<P...>& p, A&&... a) {
+		if constexpr (sizeof...(P) == 0) {
+			return R(std::forward<A>(a)...);
+		}
+		else {
+			using T0 = decltype(p.head);
+			auto result = p.head.parse(context);
+			if (Error* error = result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = result.get_failure()) {
+				return std::move(*failure);
+			}
+			if constexpr (is_basic<T0>::value) {
+				return parse<R>(context, p.tail, std::forward<A>(a)...);
+			}
+			else {
+				return parse<R>(context, p.tail, std::forward<A>(a)..., std::move(*result.get_success()));
+			}
+		}
+	}
+};
+template <class... P> class Sequence {
+	Tuple<P...> p;
+public:
+	constexpr Sequence(P... p): p(p...) {}
+	using R = typename SequenceResult<Tuple<P...>>::type;
+	R parse(Context& context) const {
+		return SequenceImpl::parse<R>(context, p);
+	}
+};
+
+template <class T, class... A> struct ChoiceResult;
+template <> struct ChoiceResult<Tuple<>> {
+	using type = BasicResult;
+};
+template <class A> struct ChoiceResult<Tuple<>, A> {
+	using type = Result<A>;
+};
+template <class... A> struct ChoiceResult<Tuple<>, A...> {
+	using type = Result<Variant<A...>>;
+};
+template <class T0, class... T, class... A> struct ChoiceResult<Tuple<T0, T...>, A...> {
+	using type = std::conditional_t<
+		std::disjunction<is_basic<T0>, ContainsType<get_success_type<T0>, A...>>::value,
+		typename ChoiceResult<Tuple<T...>, A...>::type,
+		typename ChoiceResult<Tuple<T...>, A..., get_success_type<T0>>::type
+	>;
+};
+struct ChoiceImpl {
+	template <class R, class... P> static R parse(Context& context, const Tuple<P...>& p) {
+		if constexpr (sizeof...(P) == 0) {
+			return Failure();
+		}
+		else {
+			auto result = p.head.parse(context);
+			if (Error* error = result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = result.get_failure()) {
+				return parse<R>(context, p.tail);
+			}
+			if constexpr (std::is_same<R, BasicResult>::value) {
+				return R();
+			}
+			else {
+				return std::move(*result.get_success());
+			}
+		}
+	}
+};
+template <class... P> class Choice {
+	Tuple<P...> p;
+public:
+	constexpr Choice(P... p): p(p...) {}
+	using R = typename ChoiceResult<Tuple<P...>>::type;
+	R parse(Context& context) const {
+		return ChoiceImpl::parse<R>(context, p);
+	}
+};
+
+template <class P> class Repetition {
+	P p;
+public:
+	constexpr Repetition(P p): p(p) {}
+	using R = std::conditional_t<is_basic<P>::value, BasicResult, Result<std::vector<get_success_type<P>>>>;
+	R parse(Context& context) const {
+		if constexpr (is_basic<P>::value) {
+			const Context start = context;
+			while (true) {
+				auto result = p.parse(context);
+				if (Error* error = result.get_error()) {
+					return std::move(*error);
+				}
+				if (Failure* failure = result.get_failure()) {
+					break;
+				}
+			}
+			return R();
+		}
+		else {
+			std::vector<get_success_type<P>> vector;
+			while (true) {
+				auto result = p.parse(context);
+				if (Error* error = result.get_error()) {
+					return std::move(*error);
+				}
+				if (Failure* failure = result.get_failure()) {
+					break;
+				}
+				vector.push_back(std::move(*result.get_success()));
+			}
+			return R(std::move(vector));
+		}
+	}
+};
+
+template <class P> class Not {
+	P p;
+public:
+	constexpr Not(P p): p(p) {}
+	BasicResult parse(Context& context) const {
+		const Context start = context;
+		auto result = p.parse(context);
+		if (Error* error = result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = result.get_failure()) {
+			return BasicResult();
+		}
+		context = start;
+		return Failure();
+	}
+};
+
+template <class P> class Peek {
+	P p;
+public:
+	constexpr Peek(P p): p(p) {}
+	BasicResult parse(Context& context) const {
+		const Context start = context;
+		auto result = p.parse(context);
+		if (Error* error = result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = result.get_failure()) {
+			return Failure();
+		}
+		context = start;
+		return BasicResult();
+	}
+};
+
+template <class P, auto F> class Map;
+template <class P, class R, class A, R (*F)(A)> class Map<P, F> {
+	P p;
+public:
+	constexpr Map(P p): p(p) {}
+	Result<R> parse(Context& context) const {
+		if constexpr (is_basic<P>::value) {
+			const Context start = context;
+			auto result = p.parse(context);
+			if (Error* error = result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = result.get_failure()) {
+				return std::move(*failure);
+			}
+			return F(context - start);
+		}
+		else {
+			auto result = p.parse(context);
+			if (Error* error = result.get_error()) {
+				return *error;
+			}
+			if (Failure* failure = result.get_failure()) {
+				return std::move(*failure);
+			}
+			return F(*result.get_success());
+		}
+	}
+};
+
+template <class P> class ToError {
+	P p;
+public:
+	constexpr ToError(P p): p(p) {}
+	get_result_type<P> parse(Context& context) const {
+		auto result = p.parse(context);
+		if (Error* error = result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = result.get_failure()) {
+			return Error();
+		}
+		return std::move(*result.get_success());
+	}
+};
+
+template <class T, class R> class Reference {
+public:
+	constexpr Reference() {}
+	Result<R> parse(Context& context) const {
+		return T::parser.parse(context);
+	}
+};
+
+template <class F, class = bool> struct is_char_class: std::false_type {};
+template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declval<char>()))>: std::true_type {};
+
+constexpr auto get_parser(char c) {
+	return Char([c](char c2) {
+		return c == c2;
+	});
+}
+constexpr String get_parser(const StringView& s) {
+	return String(s);
+}
+constexpr String get_parser(const char* s) {
+	return String(s);
+}
+template <class P> constexpr std::enable_if_t<!is_char_class<P>::value, P> get_parser(P p) {
+	return p;
+}
+template <class F> constexpr std::enable_if_t<is_char_class<F>::value, Char<F>> get_parser(F f) {
+	return Char(f);
+}
+constexpr auto range(char first, char last) {
+	return Char([first, last](char c) {
+		return c >= first && c <= last;
+	});
+}
+template <class... P> constexpr auto sequence(P... p) {
+	return Sequence(get_parser(p)...);
+}
+template <class... P> constexpr auto choice(P... p) {
+	return Choice(get_parser(p)...);
+}
+template <class P> constexpr auto repetition(P p) {
+	return Repetition(get_parser(p));
+}
+template <class P> constexpr auto zero_or_more(P p) {
+	return repetition(p);
+}
+template <class P> constexpr auto one_or_more(P p) {
+	return sequence(p, repetition(p));
+}
+template <class P> constexpr auto not_(P p) {
+	return Not(get_parser(p));
+}
+template <class P> constexpr auto peek(P p) {
+	return Peek(get_parser(p));
+}
+template <auto F, class P> constexpr Map<P, F> map_(P p) {
+	return Map<P, F>(p);
+}
+template <auto F, class P> constexpr auto map(P p) {
+	return map_<F>(get_parser(p));
+}
+template <class P> constexpr auto to_error(P p) {
+	return ToError(get_parser(p));
+}
+constexpr auto expect(const StringView& s) {
+	return to_error(s);
+}
+template <class T, class R = StringView> constexpr auto reference() {
+	return Reference<T, R>();
+}
+
+}
