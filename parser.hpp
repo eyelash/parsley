@@ -414,4 +414,102 @@ template <class T, class R = StringView> constexpr auto reference() {
 	return Reference<T, R>();
 }
 
+template <class P, auto F> struct BinaryOperator;
+template <class P, class A, A (*F)(A, A)> struct BinaryOperator<P, F> {
+	P p;
+	constexpr BinaryOperator(P p): p(p) {}
+	static A create(A left, A right) {
+		return F(std::move(left), std::move(right));
+	}
+};
+
+template <class P, auto F> struct UnaryOperator;
+template <class P, class A, A (*F)(A)> struct UnaryOperator<P, F> {
+	P p;
+	constexpr UnaryOperator(P p): p(p) {}
+	static A create(A a) {
+		return F(std::move(a));
+	}
+};
+
+template <class... T> struct BinaryLeftToRight {
+	Tuple<T...> t;
+	constexpr BinaryLeftToRight(T... t): t(t...) {}
+};
+
+struct OperatorLevelsImpl {
+	template <class R> static Result<R> parse_operator(Context& context, const Tuple<>& t) {
+		return Failure();
+	}
+	template <class R, class T0, class... T> static Result<R> parse_operator(Context& context, const Tuple<T0, T...>& t) {
+		auto result = t.head.p.parse(context);
+		if (Error* error = result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = result.get_failure()) {
+			return parse_operator<R>(context, t.tail);
+		}
+		return T0::create;
+	}
+	template <class E, class R> static Result<R> parse(Context& context, const Tuple<>& t) {
+		return Reference<E, R>().parse(context);
+	}
+	template <class E, class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryLeftToRight<T0>, T...>& t) {
+		Result<R> result = parse<E, R>(context, t.tail);
+		if (Error* error = result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = result.get_failure()) {
+			return std::move(*failure);
+		}
+		R left = std::move(*result.get_success());
+		while (true) {
+			Result<R (*)(R, R)> operator_result = parse_operator<R (*)(R, R)>(context, t.head.t);
+			if (Error* error = operator_result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = operator_result.get_failure()) {
+				break;
+			}
+			R (*create)(R, R) = *operator_result.get_success();
+			Result<R> result = parse<E, R>(context, t.tail);
+			if (Error* error = result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = result.get_failure()) {
+				return std::move(*failure);
+			}
+			R right = std::move(*result.get_success());
+			left = create(std::move(left), std::move(right));
+		}
+		return std::move(left);
+	}
+};
+template <class E, class R, class... T> struct OperatorLevels {
+	Tuple<T...> t;
+	constexpr OperatorLevels(T... t): t(t...) {}
+	Result<R> parse(Context& context) const {
+		return OperatorLevelsImpl::parse<E, R>(context, t);
+	}
+};
+
+template <auto F, class P> constexpr BinaryOperator<P, F> binary_operator_(P p) {
+	return BinaryOperator<P, F>(p);
+}
+template <auto F, class P> constexpr auto binary_operator(P p) {
+	return binary_operator_<F>(get_parser(p));
+}
+template <auto F, class P> constexpr UnaryOperator<P, F> unary_operator_(P p) {
+	return UnaryOperator<P, F>(p);
+}
+template <auto F, class P> constexpr auto unary_operator(P p) {
+	return unary_operator_<F>(get_parser(p));
+}
+template <class... T> constexpr auto binary_left_to_right(T... t) {
+	return BinaryLeftToRight(t...);
+}
+template <class E, class R = StringView, class... T> constexpr auto operator_levels(T... t) {
+	return OperatorLevels<E, R, T...>(t...);
+}
+
 }

@@ -87,8 +87,23 @@ struct parse_expression_last {
 	);
 };
 
+template <class P> constexpr auto operator_(P p) {
+	return sequence(
+		reference<parse_white_space>(),
+		p,
+		reference<parse_white_space>()
+	);
+}
+
 struct parse_expression {
-	static constexpr auto parser = reference<parse_expression_last, Expression>();
+	static IntLiteral add(IntLiteral left, IntLiteral right) {
+		return IntLiteral(left.get_value() + right.get_value());
+	}
+	static constexpr auto parser = operator_levels<parse_expression_last, Expression>(
+		binary_left_to_right(
+			binary_operator<add>(operator_('+'))
+		)
+	);
 };
 
 struct parse_program {
