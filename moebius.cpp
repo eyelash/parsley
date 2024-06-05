@@ -75,7 +75,7 @@ struct parse_int_literal {
 struct parse_expression;
 
 struct parse_expression_last {
-	static constexpr auto parser = choice(
+	static constexpr auto parser = to_error(choice(
 		sequence(
 			'(',
 			reference<parse_white_space>(),
@@ -84,7 +84,7 @@ struct parse_expression_last {
 			expect(")")
 		),
 		reference<parse_int_literal, Expression>()
-	);
+	));
 };
 
 template <class P> constexpr auto operator_(P p) {
@@ -116,10 +116,8 @@ struct parse_program {
 };
 
 Result<Expression> parse_program(const char* path) {
-	std::ifstream file(path);
-	std::vector<char> content;
-	content.insert(content.end(), std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-	Context context(content.data(), content.data() + content.size());
+	SourceFile file(path);
+	Context context(&file);
 	return reference<struct parse_program, Expression>().parse(context);
 }
 
@@ -128,18 +126,19 @@ Result<Expression> parse_program(const char* path) {
 \*---------------*/
 
 void interpret_program(const Expression& program) {
-	std::cout << program.get_value() << std::endl;
+	const std::int32_t result = program.get_value();
+	print(ln(print_number(result)));
 }
 
 int main(int argc, char** argv) {
 	if (argc > 1) {
 		auto result = parse_program(argv[1]);
 		if (result.get_failure()) {
-			std::cout << "Failure\n";
+			print(std::cerr, ln("Failure"));
 			return 1;
 		}
-		else if (result.get_error()) {
-			std::cout << "Error\n";
+		else if (Error* error = result.get_error()) {
+			print(std::cerr, ErrorPrinter(error));
 			return 1;
 		}
 		std::cout << "Success\n";

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "printer.hpp"
 #include <vector>
 
 template <class U, class... T> struct ContainsType;
@@ -13,20 +14,17 @@ template <class U, class T0, class... T> struct ContainsType<U, T0, T...> {
 namespace parser {
 
 class Context {
-	//const SourceFile* file;
+	const SourceFile* file;
 	const char* position;
-	const char* end;
 public:
-	//ParseContext(const SourceFile* file): file(file), position(file->begin()) {}
-	//constexpr ParseContext(const SourceFile* file, const char* position): file(file), position(position) {}
-	constexpr Context(const char* position, const char* end): position(position), end(end) {}
-	constexpr Context(const StringView& s): position(s.begin()), end(s.end()) {}
-	explicit operator bool() const {
-		return position < end;
+	Context(const SourceFile* file): file(file), position(file->begin()) {}
+	constexpr Context(const SourceFile* file, const char* position): file(file), position(position) {}
+	operator bool() const {
+		return position < file->end();
 	}
-	/*constexpr bool operator <(const Context& rhs) const {
+	constexpr bool operator <(const Context& rhs) const {
 		return position < rhs.position;
-	}*/
+	}
 	constexpr char operator *() const {
 		return *position;
 	}
@@ -37,12 +35,12 @@ public:
 	constexpr StringView operator -(const Context& start) const {
 		return StringView(start.position, position - start.position);
 	}
-	/*const char* get_path() const {
+	const char* get_path() const {
 		return file->get_path();
-	}*/
-	/*std::size_t get_position() const {
+	}
+	std::size_t get_position() const {
 		return position - file->begin();
-	}*/
+	}
 };
 
 template <class T> class Success {
@@ -57,10 +55,6 @@ public:
 class Failure {
 public:
 	constexpr Failure() {}
-};
-class Error {
-public:
-	constexpr Error() {}
 };
 template <class T> class Result {
 	Variant<Success<T>, Failure, Error> variant;
@@ -338,7 +332,23 @@ public:
 			return std::move(*error);
 		}
 		if (Failure* failure = result.get_failure()) {
-			return Error();
+			return Error(context.get_path(), context.get_position(), "");
+		}
+		return std::move(*result.get_success());
+	}
+};
+
+class Expect {
+	StringView s;
+public:
+	constexpr Expect(const StringView& s): s(s) {}
+	BasicResult parse(Context& context) const {
+		auto result = String(s).parse(context);
+		if (Error* error = result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = result.get_failure()) {
+			return Error(context.get_path(), context.get_position(), format("expected \"%\"", s));
 		}
 		return std::move(*result.get_success());
 	}
@@ -407,8 +417,8 @@ template <auto F, class P> constexpr auto map(P p) {
 template <class P> constexpr auto to_error(P p) {
 	return ToError(get_parser(p));
 }
-constexpr auto expect(const StringView& s) {
-	return to_error(s);
+constexpr Expect expect(const StringView& s) {
+	return Expect(s);
 }
 template <class T, class R = StringView> constexpr auto reference() {
 	return Reference<T, R>();
