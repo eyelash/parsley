@@ -322,19 +322,12 @@ public:
 	}
 };
 
-template <class P> class ToError {
-	P p;
+class Error_ {
+	StringView s;
 public:
-	constexpr ToError(P p): p(p) {}
-	get_result_type<P> parse(Context& context) const {
-		auto result = p.parse(context);
-		if (Error* error = result.get_error()) {
-			return std::move(*error);
-		}
-		if (Failure* failure = result.get_failure()) {
-			return Error(context.get_path(), context.get_position(), "");
-		}
-		return std::move(*result.get_success());
+	constexpr Error_(const StringView& s): s(s) {}
+	BasicResult parse(Context& context) const {
+		return Error(context.get_path(), context.get_position(), s);
 	}
 };
 
@@ -414,8 +407,8 @@ template <auto F, class P> constexpr Map<P, F> map_(P p) {
 template <auto F, class P> constexpr auto map(P p) {
 	return map_<F>(get_parser(p));
 }
-template <class P> constexpr auto to_error(P p) {
-	return ToError(get_parser(p));
+constexpr Error_ error(const StringView& s) {
+	return Error_(s);
 }
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);

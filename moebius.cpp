@@ -75,7 +75,7 @@ struct parse_int_literal {
 struct parse_expression;
 
 struct parse_expression_last {
-	static constexpr auto parser = to_error(choice(
+	static constexpr auto parser = choice(
 		sequence(
 			'(',
 			reference<parse_white_space>(),
@@ -83,8 +83,9 @@ struct parse_expression_last {
 			reference<parse_white_space>(),
 			expect(")")
 		),
-		reference<parse_int_literal, Expression>()
-	));
+		reference<parse_int_literal, Expression>(),
+		error("expected an expression")
+	);
 };
 
 template <class P> constexpr auto operator_(P p) {
@@ -111,7 +112,7 @@ struct parse_program {
 		reference<parse_white_space>(),
 		reference<parse_expression, Expression>(),
 		reference<parse_white_space>(),
-		to_error(not_(any_char))
+		choice(not_(any_char), error("unexpected character at end of program"))
 	);
 };
 
