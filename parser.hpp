@@ -11,6 +11,14 @@ template <class U, class T0, class... T> struct ContainsType<U, T0, T...> {
 	static constexpr bool value = ContainsType<U, T...>::value;
 };
 
+template <class... T> struct GetLastType;
+template <class T> struct GetLastType<T> {
+	using type = T;
+};
+template <class T0, class T1, class... T> struct GetLastType<T0, T1, T...> {
+	using type = typename GetLastType<T1, T...>::type;
+};
+
 namespace parser {
 
 class Context {
@@ -469,11 +477,11 @@ struct OperatorLevelsImpl {
 		}
 		return T0::create;
 	}
-	template <class E, class R> static Result<R> parse(Context& context, const Tuple<>& t) {
-		return Reference<E, R>().parse(context);
+	template <class R, class T> static Result<R> parse(Context& context, const Tuple<T>& t) {
+		return t.head.parse(context);
 	}
-	template <class E, class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryLeftToRight<T0>, T...>& t) {
-		Result<R> left_result = parse<E, R>(context, t.tail);
+	template <class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryLeftToRight<T0>, T...>& t) {
+		Result<R> left_result = parse<R>(context, t.tail);
 		if (Error* error = left_result.get_error()) {
 			return std::move(*error);
 		}
@@ -490,7 +498,7 @@ struct OperatorLevelsImpl {
 				break;
 			}
 			R (*create)(R, R) = *operator_result.get_success();
-			Result<R> right_result = parse<E, R>(context, t.tail);
+			Result<R> right_result = parse<R>(context, t.tail);
 			if (Error* error = right_result.get_error()) {
 				return std::move(*error);
 			}
@@ -502,8 +510,8 @@ struct OperatorLevelsImpl {
 		}
 		return std::move(left);
 	}
-	template <class E, class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryRightToLeft<T0>, T...>& t) {
-		Result<R> left_result = parse<E, R>(context, t.tail);
+	template <class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryRightToLeft<T0>, T...>& t) {
+		Result<R> left_result = parse<R>(context, t.tail);
 		if (Error* error = left_result.get_error()) {
 			return std::move(*error);
 		}
@@ -519,7 +527,7 @@ struct OperatorLevelsImpl {
 			return std::move(left);
 		}
 		R (*create)(R, R) = *operator_result.get_success();
-		Result<R> right_result = parse<E, R>(context, t);
+		Result<R> right_result = parse<R>(context, t);
 		if (Error* error = right_result.get_error()) {
 			return std::move(*error);
 		}
@@ -529,16 +537,16 @@ struct OperatorLevelsImpl {
 		R right = std::move(*right_result.get_success());
 		return create(std::move(left), std::move(right));
 	}
-	template <class E, class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<UnaryPrefix<T0>, T...>& t) {
+	template <class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<UnaryPrefix<T0>, T...>& t) {
 		Result<R (*)(R)> operator_result = parse_operator<R (*)(R)>(context, t.head.t);
 		if (Error* error = operator_result.get_error()) {
 			return std::move(*error);
 		}
 		if (Failure* failure = operator_result.get_failure()) {
-			return parse<E, R>(context, t.tail);
+			return parse<R>(context, t.tail);
 		}
 		R (*create)(R) = *operator_result.get_success();
-		Result<R> result = parse<E, R>(context, t);
+		Result<R> result = parse<R>(context, t);
 		if (Error* error = result.get_error()) {
 			return std::move(*error);
 		}
@@ -547,8 +555,8 @@ struct OperatorLevelsImpl {
 		}
 		return create(*result.get_success());
 	}
-	template <class E, class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<UnaryPostfix<T0>, T...>& t) {
-		Result<R> result = parse<E, R>(context, t.tail);
+	template <class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<UnaryPostfix<T0>, T...>& t) {
+		Result<R> result = parse<R>(context, t.tail);
 		if (Error* error = result.get_error()) {
 			return std::move(*error);
 		}
@@ -570,11 +578,12 @@ struct OperatorLevelsImpl {
 		return std::move(left);
 	}
 };
-template <class E, class R, class... T> struct OperatorLevels {
+template <class... T> struct OperatorLevels {
 	Tuple<T...> t;
 	constexpr OperatorLevels(T... t): t(t...) {}
+	using R = get_success_type<typename GetLastType<T...>::type>;
 	Result<R> parse(Context& context) const {
-		return OperatorLevelsImpl::parse<E, R>(context, t);
+		return OperatorLevelsImpl::parse<R>(context, t);
 	}
 };
 
@@ -602,8 +611,8 @@ template <class... T> constexpr auto unary_prefix(T... t) {
 template <class... T> constexpr auto unary_postfix(T... t) {
 	return UnaryPostfix(t...);
 }
-template <class E, class R = StringView, class... T> constexpr auto operator_levels(T... t) {
-	return OperatorLevels<E, R, T...>(t...);
+template <class... T> constexpr auto operator_levels(T... t) {
+	return OperatorLevels(get_parser(t)...);
 }
 
 }

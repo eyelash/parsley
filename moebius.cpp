@@ -100,10 +100,11 @@ struct parse_expression {
 	static IntLiteral add(IntLiteral left, IntLiteral right) {
 		return IntLiteral(left.get_value() + right.get_value());
 	}
-	static constexpr auto parser = operator_levels<parse_expression_last, Expression>(
+	static constexpr auto parser = operator_levels(
 		binary_left_to_right(
 			binary_operator<add>(operator_('+'))
-		)
+		),
+		reference<parse_expression_last, Expression>()
 	);
 };
 
