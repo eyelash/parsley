@@ -235,7 +235,6 @@ public:
 	using R = std::conditional_t<is_basic<P>::value, BasicResult, Result<std::vector<get_success_type<P>>>>;
 	R parse(Context& context) const {
 		if constexpr (is_basic<P>::value) {
-			const Context start = context;
 			while (true) {
 				auto result = p.parse(context);
 				if (Error* error = result.get_error()) {
@@ -351,7 +350,7 @@ public:
 		if (Failure* failure = result.get_failure()) {
 			return Error(context.get_path(), context.get_position(), format("expected \"%\"", s));
 		}
-		return std::move(*result.get_success());
+		return BasicResult();
 	}
 };
 
@@ -421,7 +420,7 @@ constexpr Error_ error(const StringView& s) {
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);
 }
-template <class T, class R = StringView> constexpr auto reference() {
+template <class T, class R = BasicResult::type> constexpr auto reference() {
 	return Reference<T, R>();
 }
 
