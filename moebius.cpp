@@ -84,7 +84,7 @@ struct parse_expression_last {
 			expect(")")
 		),
 		reference<parse_int_literal, Expression>(),
-		error("expected an expression")
+		error<Expression>("expected an expression")
 	);
 };
 

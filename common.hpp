@@ -131,10 +131,12 @@ public:
 		index_ = I;
 	}
 	Variant(const Variant&) = delete;
+	Variant(Variant&&) = delete;
 	~Variant() {
 		destruct<0>();
 	}
 	Variant& operator =(const Variant&) = delete;
+	Variant& operator =(Variant&&) = delete;
 	constexpr std::size_t index() const {
 		return index_;
 	}

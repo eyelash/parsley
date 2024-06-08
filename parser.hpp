@@ -55,6 +55,8 @@ template <class T> class Success {
 public:
 	T value;
 	template <class... A> constexpr Success(A&&... a): value(std::forward<A>(a)...) {}
+	Success(const Success& success): value(success.value) {}
+	Success(Success&& success): value(std::move(success.value)) {}
 };
 template <> class Success<void> {
 public:
@@ -191,7 +193,7 @@ template <class... A> struct ChoiceResult<Tuple<>, A...> {
 };
 template <class T0, class... T, class... A> struct ChoiceResult<Tuple<T0, T...>, A...> {
 	using type = std::conditional_t<
-		std::disjunction<is_basic<T0>, ContainsType<get_success_type<T0>, A...>>::value,
+		ContainsType<get_success_type<T0>, A...>::value,
 		typename ChoiceResult<Tuple<T...>, A...>::type,
 		typename ChoiceResult<Tuple<T...>, A..., get_success_type<T0>>::type
 	>;
@@ -329,11 +331,11 @@ public:
 	}
 };
 
-class Error_ {
+template <class R> class Error_ {
 	StringView s;
 public:
 	constexpr Error_(const StringView& s): s(s) {}
-	BasicResult parse(Context& context) const {
+	Result<R> parse(Context& context) const {
 		return Error(context.get_path(), context.get_position(), s);
 	}
 };
@@ -414,8 +416,8 @@ template <auto F, class P> constexpr Map<P, F> map_(P p) {
 template <auto F, class P> constexpr auto map(P p) {
 	return map_<F>(get_parser(p));
 }
-constexpr Error_ error(const StringView& s) {
-	return Error_(s);
+template <class R = BasicResult::type> constexpr Error_<R> error(const StringView& s) {
+	return Error_<R>(s);
 }
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);
