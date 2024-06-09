@@ -51,16 +51,16 @@ public:
 	}
 };
 
+class Empty {
+public:
+	constexpr Empty() {}
+};
 template <class T> class Success {
 public:
 	T value;
 	template <class... A> constexpr Success(A&&... a): value(std::forward<A>(a)...) {}
 	Success(const Success& success): value(success.value) {}
 	Success(Success&& success): value(std::move(success.value)) {}
-};
-template <> class Success<void> {
-public:
-	constexpr Success() {}
 };
 class Failure {
 public:
@@ -85,20 +85,15 @@ public:
 	}
 };
 
-template <class T, class = void> struct HasResultType: std::false_type {};
-template <class T> struct HasResultType<T, std::void_t<typename T::result_type>>: std::true_type {};
-template <class T, bool has_result_type, class M> struct GetResultType;
-template <class T, class M> struct GetResultType<T, true, M> {
-	using type = typename T::result_type;
-};
-template <class T, class R> struct GetResultType<T, false, R (T::*)(Context&) const> {
+template <class T, class M> struct GetResultType;
+template <class T, class R> struct GetResultType<T, R (T::*)(Context&) const> {
 	using type = R;
 };
-template <class T> using get_result_type = typename GetResultType<T, HasResultType<T>::value, decltype(&T::parse)>::type;
+template <class T> using get_result_type = typename GetResultType<T, decltype(&T::parse)>::type;
 
 template <class T> using get_success_type = typename get_result_type<T>::type;
 
-using BasicResult = Result<StringView>;
+using BasicResult = Result<Empty>;
 template <class... T> using is_basic = std::conjunction<std::is_same<get_result_type<T>, BasicResult>...>;
 
 template <class F> class Char {
@@ -211,12 +206,7 @@ struct ChoiceImpl {
 			if (Failure* failure = result.get_failure()) {
 				return parse<R>(context, p.tail);
 			}
-			if constexpr (std::is_same<R, BasicResult>::value) {
-				return R();
-			}
-			else {
-				return std::move(*result.get_success());
-			}
+			return std::move(*result.get_success());
 		}
 	}
 };
