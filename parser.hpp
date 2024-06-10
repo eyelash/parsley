@@ -74,14 +74,14 @@ public:
 	Result(Error&& error): variant(std::move(error)) {}
 	using type = T;
 	T* get_success() {
-		Success<T>* success = variant.template get<Success<T>>();
+		Success<T>* success = get<Success<T>>(variant);
 		return success ? &success->value : nullptr;
 	}
 	Failure* get_failure() {
-		return variant.template get<Failure>();
+		return get<Failure>(variant);
 	}
 	Error* get_error() {
-		return variant.template get<Error>();
+		return get<Error>(variant);
 	}
 };
 
@@ -226,32 +226,20 @@ public:
 	constexpr Repetition(P p): p(p) {}
 	using R = std::conditional_t<is_basic<P>::value, BasicResult, Result<std::vector<get_success_type<P>>>>;
 	R parse(Context& context) const {
-		if constexpr (is_basic<P>::value) {
-			while (true) {
-				auto result = p.parse(context);
-				if (Error* error = result.get_error()) {
-					return std::move(*error);
-				}
-				if (Failure* failure = result.get_failure()) {
-					break;
-				}
+		typename R::type vector;
+		while (true) {
+			auto result = p.parse(context);
+			if (Error* error = result.get_error()) {
+				return std::move(*error);
 			}
-			return R();
-		}
-		else {
-			std::vector<get_success_type<P>> vector;
-			while (true) {
-				auto result = p.parse(context);
-				if (Error* error = result.get_error()) {
-					return std::move(*error);
-				}
-				if (Failure* failure = result.get_failure()) {
-					break;
-				}
+			if (Failure* failure = result.get_failure()) {
+				break;
+			}
+			if constexpr (!is_basic<P>::value) {
 				vector.push_back(std::move(*result.get_success()));
 			}
-			return R(std::move(vector));
 		}
+		return std::move(vector);
 	}
 };
 

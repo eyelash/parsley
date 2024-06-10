@@ -25,6 +25,9 @@ public:
 	operator T*() const {
 		return pointer;
 	}
+	T* operator ->() const {
+		return pointer;
+	}
 };
 
 template <std::size_t I, class... T> struct IndexToType;
@@ -76,87 +79,149 @@ public:
 	};
 	Union() {}
 	~Union() {}
-	template <std::size_t I, class... A> void construct(A&&... a) {
-		if constexpr (I == 0) {
-			new (&head) T0(std::forward<A>(a)...);
-		}
-		else {
-			tail.template construct<I - 1>(std::forward<A>(a)...);
-		}
-	}
-	template <std::size_t I> void destruct() {
-		if constexpr (I == 0) {
-			head.~T0();
-		}
-		else {
-			tail.template destruct<I - 1>();
-		}
-	}
 	template <std::size_t I> using get_type = typename IndexToType<I, T0, T...>::type;
-	template <std::size_t I> get_type<I>& get() {
-		if constexpr (I == 0) {
-			return head;
-		}
-		else {
-			return tail.template get<I - 1>();
-		}
-	}
-	template <std::size_t I> const get_type<I>& get() const {
-		if constexpr (I == 0) {
-			return head;
-		}
-		else {
-			return tail.template get<I - 1>();
-		}
-	}
 };
+
+template <class T> struct GetSize;
+template <class T> struct GetSize<T&> {
+	static constexpr std::size_t value = GetSize<T>::value;
+};
+template <class T> struct GetSize<const T&> {
+	static constexpr std::size_t value = GetSize<T>::value;
+};
+template <class... T> struct GetSize<Tuple<T...>> {
+	static constexpr std::size_t value = sizeof...(T);
+};
+template <class... T> struct GetSize<Union<T...>> {
+	static constexpr std::size_t value = sizeof...(T);
+};
+
+template <std::size_t I, class T, bool enable, class = void> struct EnableGet;
+template <std::size_t I, class T> struct EnableGet<I, T&, true, std::void_t<typename EnableGet<I, T, true>::type>> {
+	using type = typename EnableGet<I, T, true>::type&;
+};
+template <std::size_t I, class T> struct EnableGet<I, const T&, true, std::void_t<typename EnableGet<I, T, true>::type>> {
+	using type = const typename EnableGet<I, T, true>::type&;
+};
+template <std::size_t I, class... T> struct EnableGet<I, Tuple<T...>, true> {
+	using type = typename IndexToType<I, T...>::type;
+};
+template <std::size_t I, class... T> struct EnableGet<I, Union<T...>, true> {
+	using type = typename IndexToType<I, T...>::type;
+};
+
+template <std::size_t I, class T> typename EnableGet<I, T, I == 0>::type&& get(T&& t) {
+	return std::forward<T>(t).head;
+}
+template <std::size_t I, class T> typename EnableGet<I, T, I != 0>::type&& get(T&& t) {
+	return get<I - 1>(std::forward<T>(t).tail);
+}
+
+template <std::size_t I, class... T, class... A> void union_construct(Union<T...>& union_, A&&... a) {
+	using T0 = typename IndexToType<I, T...>::type;
+	new (&get<I>(union_)) T0(std::forward<A>(a)...);
+}
+template <std::size_t I, class... T> void union_destruct(Union<T...>& union_) {
+	using T0 = typename IndexToType<I, T...>::type;
+	get<I>(union_).~T0();
+}
+
+template <class D, class T, std::size_t... I, class... A> auto union_dispatch(std::size_t index, T&& t, std::index_sequence<I...>, A&&... a) {
+	using F = decltype(&D::template dispatch<0>);
+	static constexpr F table[sizeof...(I)] = {&D::template dispatch<I>...};
+	return table[index](std::forward<T>(t), std::forward<A>(a)...);
+}
+template <class D, class T, class... A> auto union_dispatch(std::size_t index, T&& t, A&&... a) {
+	return union_dispatch<D>(index, std::forward<T>(t), std::make_index_sequence<GetSize<T>::value>(), std::forward<A>(a)...);
+}
 
 template <class... T> class Variant {
 	Union<T...> data_;
 	std::size_t index_;
-	template <std::size_t I> void destruct() {
-		if constexpr (I < sizeof...(T)) {
-			if (I == index_) {
-				data_.template destruct<I>();
-			}
-			else {
-				destruct<I + 1>();
-			}
+	struct CopyConstruct {
+		template <std::size_t I> static void dispatch(Union<T...>& data_, const Union<T...>& rhs) {
+			union_construct<I>(data_, get<I>(rhs));
 		}
-	}
+	};
+	struct MoveConstruct {
+		template <std::size_t I> static void dispatch(Union<T...>& data_, Union<T...>&& rhs) {
+			union_construct<I>(data_, get<I>(std::move(rhs)));
+		}
+	};
+	struct Destruct {
+		template <std::size_t I> static void dispatch(Union<T...>& data_) {
+			union_destruct<I>(data_);
+		}
+	};
+	struct CopyAssign {
+		template <std::size_t I> static void dispatch(Union<T...>& data_, const Union<T...>& rhs) {
+			get<I>(data_) = get<I>(rhs);
+		}
+	};
+	struct MoveAssign {
+		template <std::size_t I> static void dispatch(Union<T...>& data_, Union<T...>&& rhs) {
+			get<I>(data_) = get<I>(std::move(rhs));
+		}
+	};
 public:
 	template <class U> Variant(U&& u) {
 		constexpr std::size_t I = index_of<U>;
-		data_.template construct<I>(std::forward<U>(u));
+		union_construct<I>(data_, std::forward<U>(u));
 		index_ = I;
 	}
-	Variant(const Variant&) = delete;
-	Variant(Variant&&) = delete;
-	~Variant() {
-		destruct<0>();
+	Variant(const Variant& variant) {
+		union_dispatch<CopyConstruct>(variant.index_, data_, variant.data_);
+		index_ = variant.index_;
 	}
-	Variant& operator =(const Variant&) = delete;
-	Variant& operator =(Variant&&) = delete;
+	Variant(Variant&& variant) {
+		union_dispatch<MoveConstruct>(variant.index_, data_, std::move(variant).data_);
+		index_ = variant.index_;
+	}
+	~Variant() {
+		union_dispatch<Destruct>(index_, data_);
+	}
+	Variant& operator =(const Variant& variant) {
+		if (index_ == variant.index_) {
+			union_dispatch<CopyAssign>(index_, data_, variant.data_);
+		}
+		else {
+			union_dispatch<Destruct>(index_, data_);
+			union_dispatch<CopyConstruct>(variant.index_, data_, variant.data_);
+			index_ = variant.index_;
+		}
+		return *this;
+	}
+	Variant& operator =(Variant&& variant) {
+		if (index_ == variant.index_) {
+			union_dispatch<MoveAssign>(index_, data_, std::move(variant).data_);
+		}
+		else {
+			union_dispatch<Destruct>(index_, data_);
+			union_dispatch<MoveConstruct>(variant.index_, data_, std::move(variant).data_);
+			index_ = variant.index_;
+		}
+		return *this;
+	}
 	constexpr std::size_t index() const {
 		return index_;
 	}
 	template <std::size_t I> using get_type = typename IndexToType<I, T...>::type;
 	template <class U> static constexpr std::size_t index_of = TypeToIndex<U, T...>::index;
-	template <std::size_t I> get_type<I>* get() {
-		if (I == index_) {
-			return &data_.template get<I>();
+	template <std::size_t I> friend get_type<I>* get(Variant& variant) {
+		if (I == variant.index_) {
+			return &get<I>(variant.data_);
 		}
 		else {
 			return nullptr;
 		}
 	}
-	template <class U> U* get() {
-		return get<index_of<U>>();
+	template <class U> friend U* get(Variant& variant) {
+		return get<index_of<U>>(variant);
 	}
 	template <std::size_t I = 0, class F> void visit(F&& f) {
 		if constexpr (I < sizeof...(T)) {
 			if (I == index_) {
-				std::forward<F>(f)(data_.template get<I>());
+				std::forward<F>(f)(get<I>(data_));
 			}
 			else {
 				visit<I + 1>(std::forward<F>(f));
