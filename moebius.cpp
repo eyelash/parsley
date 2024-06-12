@@ -43,24 +43,28 @@ constexpr bool alphanumeric(char c) {
 	return alphabetic(c) || numeric(c);
 }
 
-struct parse_comment {
-	static constexpr auto parser = choice(
-		sequence("//", zero_or_more(sequence(not_("\n"), any_char))),
-		sequence("/*", zero_or_more(sequence(not_("*/"), any_char)), expect("*/"))
-	);
-};
+static constexpr auto parse_comment = choice(
+	sequence("//", zero_or_more(sequence(not_("\n"), any_char))),
+	sequence("/*", zero_or_more(sequence(not_("*/"), any_char)), expect("*/"))
+);
 
-struct parse_white_space {
-	static constexpr auto parser = sequence(
-		zero_or_more(white_space),
-		zero_or_more(sequence(
-			reference<parse_comment>(),
-			zero_or_more(white_space)
-		))
-	);
-};
+static constexpr auto parse_white_space = sequence(
+	zero_or_more(white_space),
+	zero_or_more(sequence(
+		parse_comment,
+		zero_or_more(white_space)
+	))
+);
 
-struct parse_int_literal {
+template <class P> constexpr auto operator_(P p) {
+	return sequence(
+		parse_white_space,
+		p,
+		parse_white_space
+	);
+}
+
+class MoebiusParser {
 	static IntLiteral to_int_literal(const StringView& s) {
 		std::int32_t number = 0;
 		for (char c: s) {
@@ -69,58 +73,44 @@ struct parse_int_literal {
 		}
 		return IntLiteral(number);
 	}
-	static constexpr auto parser = map<to_int_literal>(sequence(numeric, zero_or_more(numeric)));
-};
-
-struct parse_expression;
-
-struct parse_expression_last {
-	static constexpr auto parser = choice(
+	Parser<Expression> int_literal = map<to_int_literal>(sequence(numeric, zero_or_more(numeric)));
+	Parser<Expression> expression_last = choice(
 		sequence(
 			'(',
-			reference<parse_white_space>(),
-			reference<parse_expression, Expression>(),
-			reference<parse_white_space>(),
+			parse_white_space,
+			&expression,
+			parse_white_space,
 			expect(")")
 		),
-		reference<parse_int_literal, Expression>(),
+		&int_literal,
 		error<Expression>("expected an expression")
 	);
-};
-
-template <class P> constexpr auto operator_(P p) {
-	return sequence(
-		reference<parse_white_space>(),
-		p,
-		reference<parse_white_space>()
-	);
-}
-
-struct parse_expression {
 	static IntLiteral add(IntLiteral left, IntLiteral right) {
 		return IntLiteral(left.get_value() + right.get_value());
 	}
-	static constexpr auto parser = operator_levels(
+	Parser<Expression> expression = operator_levels(
 		binary_left_to_right(
 			binary_operator<add>(operator_('+'))
 		),
-		reference<parse_expression_last, Expression>()
+		&expression_last
 	);
-};
-
-struct parse_program {
-	static constexpr auto parser = sequence(
-		reference<parse_white_space>(),
-		reference<parse_expression, Expression>(),
-		reference<parse_white_space>(),
+	Parser<Expression> program = sequence(
+		parse_white_space,
+		&expression,
+		parse_white_space,
 		choice(not_(any_char), error("unexpected character at end of program"))
 	);
+public:
+	Result<Expression> parse(Context& context) const {
+		return program.parse(context);
+	}
 };
 
 Result<Expression> parse_program(const char* path) {
+	static MoebiusParser parser;
 	SourceFile file(path);
 	Context context(&file);
-	return reference<struct parse_program, Expression>().parse(context);
+	return parser.parse(context);
 }
 
 /*---------------*\

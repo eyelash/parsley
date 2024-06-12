@@ -342,6 +342,39 @@ public:
 	}
 };
 
+template <class R> class Parser {
+	class Interface {
+	public:
+		virtual ~Interface() = default;
+		virtual Result<R> parse(Context& context) const = 0;
+	};
+	template <class P> class Implementation final: public Interface {
+		P p;
+	public:
+		constexpr Implementation(P p): p(p) {}
+		Result<R> parse(Context& context) const override {
+			return p.parse(context);
+		}
+	};
+	::Reference<Interface> p;
+public:
+	Parser() {}
+	template <class P> Parser(P p): p(new Implementation<P>(p)) {}
+	Result<R> parse(Context& context) const {
+		return p->parse(context);
+	}
+};
+using BasicParser = Parser<BasicResult::type>;
+
+template <class P> class Pointer {
+	P* p;
+public:
+	constexpr Pointer(P* p): p(p) {}
+	get_result_type<P> parse(Context& context) const {
+		return p->parse(context);
+	}
+};
+
 template <class F, class = bool> struct is_char_class: std::false_type {};
 template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declval<char>()))>: std::true_type {};
 
@@ -355,6 +388,9 @@ constexpr String get_parser(const StringView& s) {
 }
 constexpr String get_parser(const char* s) {
 	return String(s);
+}
+template <class P> constexpr auto get_parser(Parser<P>* p) {
+	return Pointer(p);
 }
 template <class P> constexpr std::enable_if_t<!is_char_class<P>::value, P> get_parser(P p) {
 	return p;
