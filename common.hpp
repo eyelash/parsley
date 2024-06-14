@@ -126,13 +126,13 @@ template <std::size_t I, class... T> void union_destruct(Union<T...>& union_) {
 	get<I>(union_).~T0();
 }
 
-template <class D, class T, std::size_t... I, class... A> auto union_dispatch(std::size_t index, T&& t, std::index_sequence<I...>, A&&... a) {
+template <class D, std::size_t... I, class... A> auto dispatch(std::index_sequence<I...>, std::size_t index, A&&... a) {
 	using F = decltype(&D::template dispatch<0>);
 	static constexpr F table[sizeof...(I)] = {&D::template dispatch<I>...};
-	return table[index](std::forward<T>(t), std::forward<A>(a)...);
+	return table[index](std::forward<A>(a)...);
 }
 template <class D, class T, class... A> auto union_dispatch(std::size_t index, T&& t, A&&... a) {
-	return union_dispatch<D>(index, std::forward<T>(t), std::make_index_sequence<GetSize<T>::value>(), std::forward<A>(a)...);
+	return dispatch<D>(std::make_index_sequence<GetSize<T>::value>(), index, std::forward<T>(t), std::forward<A>(a)...);
 }
 
 template <class... T> class Variant {
@@ -233,6 +233,9 @@ public:
 class StringView {
 	const char* string;
 	std::size_t length;
+	static constexpr int strcmp(const char* s0, const char* s1) {
+		return *s0 != *s1 ? *s0 - *s1 : *s0 == '\0' ? 0 : strcmp(s0 + 1, s1 + 1);
+	}
 	static constexpr int strncmp(const char* s0, const char* s1, std::size_t n) {
 		return n == 0 ? 0 : *s0 != *s1 ? *s0 - *s1 : strncmp(s0 + 1, s1 + 1, n - 1);
 	}
@@ -252,7 +255,7 @@ public:
 	constexpr char operator *() const {
 		return *string;
 	}
-	constexpr operator bool() const {
+	explicit constexpr operator bool() const {
 		return string != nullptr;
 	}
 	constexpr std::size_t size() const {
@@ -287,6 +290,12 @@ public:
 	}
 	constexpr StringView substr(std::size_t pos) const {
 		return StringView(string + pos, length - pos);
+	}
+	constexpr bool starts_with(const StringView& s) const {
+		return length < s.length ? false : strncmp(string, s.string, s.length) == 0;
+	}
+	constexpr bool ends_with(const StringView& s) const {
+		return length < s.length ? false : strncmp(string + length - s.length, s.string, s.length) == 0;
 	}
 };
 
