@@ -143,36 +143,33 @@ template <class T0, class... T, class... A> struct SequenceResult<Tuple<T0, T...
 		typename SequenceResult<Tuple<T...>, A..., get_success_type<T0>>::type
 	>;
 };
-struct SequenceImpl {
-	template <class R, class... P, class... A> static R parse(Context& context, const Tuple<P...>& p, A&&... a) {
-		if constexpr (sizeof...(P) == 0) {
+template <class... P> class Sequence {
+	Tuple<P...> p;
+public:
+	constexpr Sequence(P... p): p(p...) {}
+	using R = typename SequenceResult<Tuple<P...>>::type;
+	template <std::size_t I, class... A> R parse_impl(Context& context, A&&... a) const {
+		if constexpr (I == sizeof...(P)) {
 			return R(std::forward<A>(a)...);
 		}
 		else {
-			using T0 = decltype(p.head);
-			auto result = p.head.parse(context);
+			auto result = get<I>(p).parse(context);
 			if (Error* error = result.get_error()) {
 				return std::move(*error);
 			}
 			if (Failure* failure = result.get_failure()) {
 				return std::move(*failure);
 			}
-			if constexpr (is_basic<T0>::value) {
-				return parse<R>(context, p.tail, std::forward<A>(a)...);
+			if constexpr (std::is_same<decltype(result), BasicResult>::value) {
+				return parse_impl<I + 1>(context, std::forward<A>(a)...);
 			}
 			else {
-				return parse<R>(context, p.tail, std::forward<A>(a)..., std::move(*result.get_success()));
+				return parse_impl<I + 1>(context, std::forward<A>(a)..., std::move(*result.get_success()));
 			}
 		}
 	}
-};
-template <class... P> class Sequence {
-	Tuple<P...> p;
-public:
-	constexpr Sequence(P... p): p(p...) {}
-	using R = typename SequenceResult<Tuple<P...>>::type;
 	R parse(Context& context) const {
-		return SequenceImpl::parse<R>(context, p);
+		return parse_impl<0>(context);
 	}
 };
 
@@ -193,30 +190,28 @@ template <class T0, class... T, class... A> struct ChoiceResult<Tuple<T0, T...>,
 		typename ChoiceResult<Tuple<T...>, A..., get_success_type<T0>>::type
 	>;
 };
-struct ChoiceImpl {
-	template <class R, class... P> static R parse(Context& context, const Tuple<P...>& p) {
-		if constexpr (sizeof...(P) == 0) {
-			return Failure();
-		}
-		else {
-			auto result = p.head.parse(context);
-			if (Error* error = result.get_error()) {
-				return std::move(*error);
-			}
-			if (Failure* failure = result.get_failure()) {
-				return parse<R>(context, p.tail);
-			}
-			return std::move(*result.get_success());
-		}
-	}
-};
 template <class... P> class Choice {
 	Tuple<P...> p;
 public:
 	constexpr Choice(P... p): p(p...) {}
 	using R = typename ChoiceResult<Tuple<P...>>::type;
+	template <std::size_t I> R parse_impl(Context& context) const {
+		if constexpr (I == sizeof...(P)) {
+			return Failure();
+		}
+		else {
+			auto result = get<I>(p).parse(context);
+			if (Error* error = result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = result.get_failure()) {
+				return parse_impl<I + 1>(context);
+			}
+			return std::move(*result.get_success());
+		}
+	}
 	R parse(Context& context) const {
-		return ChoiceImpl::parse<R>(context, p);
+		return parse_impl<0>(context);
 	}
 };
 
