@@ -110,10 +110,10 @@ template <std::size_t I, class... T> struct EnableGet<I, Union<T...>, true> {
 	using type = typename IndexToType<I, T...>::type;
 };
 
-template <std::size_t I, class T> typename EnableGet<I, T, I == 0>::type&& get(T&& t) {
+template <std::size_t I, class T> constexpr typename EnableGet<I, T, I == 0>::type&& get(T&& t) {
 	return std::forward<T>(t).head;
 }
-template <std::size_t I, class T> typename EnableGet<I, T, I != 0>::type&& get(T&& t) {
+template <std::size_t I, class T> constexpr typename EnableGet<I, T, I != 0>::type&& get(T&& t) {
 	return get<I - 1>(std::forward<T>(t).tail);
 }
 
