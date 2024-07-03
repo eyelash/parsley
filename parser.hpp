@@ -11,14 +11,6 @@ template <class U, class T0, class... T> struct ContainsType<U, T0, T...> {
 	static constexpr bool value = ContainsType<U, T...>::value;
 };
 
-template <class... T> struct GetLastType;
-template <class T> struct GetLastType<T> {
-	using type = T;
-};
-template <class T0, class T1, class... T> struct GetLastType<T0, T1, T...> {
-	using type = typename GetLastType<T1, T...>::type;
-};
-
 namespace parser {
 
 class Context {
@@ -591,7 +583,7 @@ struct OperatorLevelsImpl {
 template <class... T> struct OperatorLevels {
 	Tuple<T...> t;
 	constexpr OperatorLevels(T... t): t(t...) {}
-	using R = get_success_type<typename GetLastType<T...>::type>;
+	using R = get_success_type<typename IndexToType<sizeof...(T) - 1, T...>::type>;
 	Result<R> parse(Context& context) const {
 		return OperatorLevelsImpl::parse<R>(context, t);
 	}

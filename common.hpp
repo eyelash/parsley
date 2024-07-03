@@ -62,8 +62,6 @@ public:
 	static constexpr std::size_t size() {
 		return 1 + sizeof...(T);
 	}
-	template <std::size_t I> using get_type = typename IndexToType<I, T0, T...>::type;
-	template <class U> static constexpr std::size_t index_of = TypeToIndex<U, T0, T...>::index;
 };
 
 template <class... T> class Union;
@@ -79,7 +77,6 @@ public:
 	};
 	Union() {}
 	~Union() {}
-	template <std::size_t I> using get_type = typename IndexToType<I, T0, T...>::type;
 };
 
 template <class T> struct GetSize;
