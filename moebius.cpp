@@ -89,8 +89,8 @@ class MoebiusParser {
 		return IntLiteral(left.get_value() + right.get_value());
 	}
 	Parser<Expression> expression = operator_levels(
-		binary_left_to_right(
-			binary_operator<add>(operator_('+'))
+		operator_level(
+			infix_ltr<add>(operator_('+'))
 		),
 		&expression_last
 	);
