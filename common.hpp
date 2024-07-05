@@ -160,6 +160,11 @@ template <class... T> class Variant {
 			get<I>(data_) = get<I>(std::move(rhs));
 		}
 	};
+	template <class F> struct Visit {
+		template <std::size_t I> static void dispatch(Union<T...>& data_, F&& f) {
+			std::forward<F>(f)(get<I>(data_));
+		}
+	};
 public:
 	template <class U> Variant(U&& u) {
 		constexpr std::size_t I = index_of<U>;
@@ -215,15 +220,8 @@ public:
 	template <class U> friend U* get(Variant& variant) {
 		return get<index_of<U>>(variant);
 	}
-	template <std::size_t I = 0, class F> void visit(F&& f) {
-		if constexpr (I < sizeof...(T)) {
-			if (I == index_) {
-				std::forward<F>(f)(get<I>(data_));
-			}
-			else {
-				visit<I + 1>(std::forward<F>(f));
-			}
-		}
+	template <class F> void visit(F&& f) {
+		union_dispatch<Visit<F>>(index_, data_, std::forward<F>(f));
 	}
 };
 
