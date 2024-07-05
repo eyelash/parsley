@@ -484,35 +484,8 @@ template <class P, class A, A (*F)(A, A)> struct InfixRTL<P, F> {
 template <class... T> struct OperatorLevel {
 	Tuple<T...> t;
 	constexpr OperatorLevel(T... t): t(t...) {}
-	template <std::size_t level, class R, std::size_t I = 0, class O> Result<R> parse_left(Context& context, const O& levels) const {
-		if constexpr (I == sizeof...(T)) {
-			return levels.template parse_left<level + 1>(context);
-		}
-		else {
-			auto result = get<I>(t).template parse_left<level>(context, levels);
-			if (Error* error = result.get_error()) {
-				return std::move(*error);
-			}
-			if (Failure* failure = result.get_failure()) {
-				return parse_left<level, R, I + 1>(context, levels);
-			}
-			return std::move(*result.get_success());
-		}
-	}
-	template <std::size_t level, class R, std::size_t I = 0, class O> Result<R> parse_right(Context& context, R& left, const O& levels) const {
-		if constexpr (I == sizeof...(T)) {
-			return levels.template parse_right<level + 1>(context, left);
-		}
-		else {
-			auto result = get<I>(t).template parse_right<level>(context, left, levels);
-			if (Error* error = result.get_error()) {
-				return std::move(*error);
-			}
-			if (Failure* failure = result.get_failure()) {
-				return parse_right<level, R, I + 1>(context, left, levels);
-			}
-			return std::move(*result.get_success());
-		}
+	static constexpr std::size_t size() {
+		return sizeof...(T);
 	}
 };
 
@@ -520,20 +493,40 @@ template <class... T> struct OperatorLevels {
 	Tuple<T...> t;
 	constexpr OperatorLevels(T... t): t(t...) {}
 	using R = get_success_type<typename IndexToType<sizeof...(T) - 1, T...>::type>;
-	template <std::size_t level = 0> Result<R> parse_left(Context& context) const {
+	template <std::size_t level = 0, std::size_t I = 0> Result<R> parse_left(Context& context) const {
 		if constexpr (level == sizeof...(T) - 1) {
 			return get<level>(t).parse(context);
 		}
+		else if constexpr (I == IndexToType<level, T...>::type::size()) {
+			return parse_left<level + 1, 0>(context);
+		}
 		else {
-			return get<level>(t).template parse_left<level, R>(context, *this);
+			auto result = get<I>(get<level>(t).t).template parse_left<level>(context, *this);
+			if (Error* error = result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = result.get_failure()) {
+				return parse_left<level, I + 1>(context);
+			}
+			return std::move(*result.get_success());
 		}
 	}
-	template <std::size_t level = 0> Result<R> parse_right(Context& context, R& left) const {
+	template <std::size_t level = 0, std::size_t I = 0> Result<R> parse_right(Context& context, R& left) const {
 		if constexpr (level == sizeof...(T) - 1) {
 			return Failure();
 		}
+		else if constexpr (I == IndexToType<level, T...>::type::size()) {
+			return parse_right<level + 1, 0>(context, left);
+		}
 		else {
-			return get<level>(t).template parse_right<level, R>(context, left, *this);
+			auto result = get<I>(get<level>(t).t).template parse_right<level>(context, left, *this);
+			if (Error* error = result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = result.get_failure()) {
+				return parse_right<level, I + 1>(context, left);
+			}
+			return std::move(*result.get_success());
 		}
 	}
 	template <std::size_t level> Result<R> parse_level(Context& context) const {
