@@ -132,6 +132,10 @@ template <class D, class T, class... A> auto union_dispatch(std::size_t index, T
 	return dispatch<D>(std::make_index_sequence<GetSize<T>::value>(), index, std::forward<T>(t), std::forward<A>(a)...);
 }
 
+template <class T> struct TypeTag {
+	constexpr TypeTag() {}
+};
+
 template <class... T> class Variant {
 	Union<T...> data_;
 	std::size_t index_;
@@ -169,6 +173,11 @@ public:
 	template <class U> Variant(U&& u) {
 		constexpr std::size_t I = index_of<U>;
 		union_construct<I>(data_, std::forward<U>(u));
+		index_ = I;
+	}
+	template <class U, class... A> Variant(TypeTag<U>, A&&... a) {
+		constexpr std::size_t I = index_of<U>;
+		union_construct<I>(data_, std::forward<A>(a)...);
 		index_ = I;
 	}
 	Variant(const Variant& variant) {
