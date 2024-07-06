@@ -482,7 +482,7 @@ struct OperatorLevelsImpl {
 	template <class R, class T> static Result<R> parse(Context& context, const Tuple<T>& t) {
 		return t.head.parse(context);
 	}
-	template <class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryLeftToRight<T0>, T...>& t) {
+	template <class R, class... T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryLeftToRight<T0...>, T...>& t) {
 		Result<R> left_result = parse<R>(context, t.tail);
 		if (Error* error = left_result.get_error()) {
 			return std::move(*error);
@@ -512,7 +512,7 @@ struct OperatorLevelsImpl {
 		}
 		return std::move(left);
 	}
-	template <class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryRightToLeft<T0>, T...>& t) {
+	template <class R, class... T0, class... T> static Result<R> parse(Context& context, const Tuple<BinaryRightToLeft<T0...>, T...>& t) {
 		Result<R> left_result = parse<R>(context, t.tail);
 		if (Error* error = left_result.get_error()) {
 			return std::move(*error);
@@ -539,7 +539,7 @@ struct OperatorLevelsImpl {
 		R right = std::move(*right_result.get_success());
 		return create(std::move(left), std::move(right));
 	}
-	template <class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<UnaryPrefix<T0>, T...>& t) {
+	template <class R, class... T0, class... T> static Result<R> parse(Context& context, const Tuple<UnaryPrefix<T0...>, T...>& t) {
 		Result<R (*)(R)> operator_result = parse_operator<R (*)(R)>(context, t.head.t);
 		if (Error* error = operator_result.get_error()) {
 			return std::move(*error);
@@ -557,7 +557,7 @@ struct OperatorLevelsImpl {
 		}
 		return create(*result.get_success());
 	}
-	template <class R, class T0, class... T> static Result<R> parse(Context& context, const Tuple<UnaryPostfix<T0>, T...>& t) {
+	template <class R, class... T0, class... T> static Result<R> parse(Context& context, const Tuple<UnaryPostfix<T0...>, T...>& t) {
 		Result<R> result = parse<R>(context, t.tail);
 		if (Error* error = result.get_error()) {
 			return std::move(*error);
