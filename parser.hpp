@@ -286,7 +286,7 @@ public:
 		else {
 			auto result = p.parse(context);
 			if (Error* error = result.get_error()) {
-				return *error;
+				return std::move(*error);
 			}
 			if (Failure* failure = result.get_failure()) {
 				return std::move(*failure);
@@ -321,9 +321,9 @@ public:
 	}
 };
 
-template <class T, class R> class Reference {
+template <class T, class R> class Reference_ {
 public:
-	constexpr Reference() {}
+	constexpr Reference_() {}
 	Result<R> parse(Context& context) const {
 		return T::parser.parse(context);
 	}
@@ -343,7 +343,7 @@ template <class R> class Parser {
 			return p.parse(context);
 		}
 	};
-	::Reference<Interface> p;
+	Reference<Interface> p;
 public:
 	Parser() {}
 	template <class P> Parser(P p): p(new Implementation<P>(p)) {}
@@ -424,7 +424,7 @@ constexpr Expect expect(const StringView& s) {
 	return Expect(s);
 }
 template <class T, class R = BasicResult::type> constexpr auto reference() {
-	return Reference<T, R>();
+	return Reference_<T, R>();
 }
 
 template <class P, auto F> struct BinaryOperator;
@@ -455,7 +455,7 @@ template <class... T> struct LeftToRight {
 		}
 		else {
 			using T0 = typename IndexToType<I, T...>::type;
-			auto operator_result = get<I>(t).p.parse(context);
+			BasicResult operator_result = get<I>(t).p.parse(context);
 			if (Error* error = operator_result.get_error()) {
 				return std::move(*error);
 			}
@@ -508,7 +508,7 @@ template <class... T> struct RightToLeft {
 				return parse_binary_operator<I + 1>(context, left, next_level);
 			}
 			else {
-				auto operator_result = get<I>(t).p.parse(context);
+				BasicResult operator_result = get<I>(t).p.parse(context);
 				if (Error* error = operator_result.get_error()) {
 					return std::move(*error);
 				}
@@ -547,7 +547,7 @@ template <class... T> struct RightToLeft {
 				return parse_unary_operator<I + 1>(context, next_level);
 			}
 			else {
-				auto operator_result = get<I>(t).p.parse(context);
+				BasicResult operator_result = get<I>(t).p.parse(context);
 				if (Error* error = operator_result.get_error()) {
 					return std::move(*error);
 				}

@@ -124,7 +124,8 @@ template <std::size_t I, class... T> void union_destruct(Union<T...>& union_) {
 }
 
 template <class D, std::size_t... I, class... A> auto dispatch(std::index_sequence<I...>, std::size_t index, A&&... a) {
-	using F = decltype(&D::template dispatch<0>);
+	using R = decltype(D::template dispatch<0>(std::forward<A>(a)...));
+	using F = R (*)(A&&...);
 	static constexpr F table[sizeof...(I)] = {&D::template dispatch<I>...};
 	return table[index](std::forward<A>(a)...);
 }
@@ -139,14 +140,9 @@ template <class T> struct TypeTag {
 template <class... T> class Variant {
 	Union<T...> data_;
 	std::size_t index_;
-	struct CopyConstruct {
-		template <std::size_t I> static void dispatch(Union<T...>& data_, const Union<T...>& rhs) {
-			union_construct<I>(data_, get<I>(rhs));
-		}
-	};
-	struct MoveConstruct {
-		template <std::size_t I> static void dispatch(Union<T...>& data_, Union<T...>&& rhs) {
-			union_construct<I>(data_, get<I>(std::move(rhs)));
+	struct Construct {
+		template <std::size_t I, class A> static void dispatch(Union<T...>& data_, A&& a) {
+			union_construct<I>(data_, get<I>(std::forward<A>(a)));
 		}
 	};
 	struct Destruct {
@@ -154,18 +150,13 @@ template <class... T> class Variant {
 			union_destruct<I>(data_);
 		}
 	};
-	struct CopyAssign {
-		template <std::size_t I> static void dispatch(Union<T...>& data_, const Union<T...>& rhs) {
-			get<I>(data_) = get<I>(rhs);
+	struct Assign {
+		template <std::size_t I, class A> static void dispatch(Union<T...>& data_, A&& a) {
+			get<I>(data_) = get<I>(std::forward<A>(a));
 		}
 	};
-	struct MoveAssign {
-		template <std::size_t I> static void dispatch(Union<T...>& data_, Union<T...>&& rhs) {
-			get<I>(data_) = get<I>(std::move(rhs));
-		}
-	};
-	template <class F> struct Visit {
-		template <std::size_t I> static void dispatch(Union<T...>& data_, F&& f) {
+	struct Visit {
+		template <std::size_t I, class F> static void dispatch(Union<T...>& data_, F&& f) {
 			std::forward<F>(f)(get<I>(data_));
 		}
 	};
@@ -181,11 +172,11 @@ public:
 		index_ = I;
 	}
 	Variant(const Variant& variant) {
-		union_dispatch<CopyConstruct>(variant.index_, data_, variant.data_);
+		union_dispatch<Construct>(variant.index_, data_, variant.data_);
 		index_ = variant.index_;
 	}
 	Variant(Variant&& variant) {
-		union_dispatch<MoveConstruct>(variant.index_, data_, std::move(variant).data_);
+		union_dispatch<Construct>(variant.index_, data_, std::move(variant).data_);
 		index_ = variant.index_;
 	}
 	~Variant() {
@@ -193,22 +184,22 @@ public:
 	}
 	Variant& operator =(const Variant& variant) {
 		if (index_ == variant.index_) {
-			union_dispatch<CopyAssign>(index_, data_, variant.data_);
+			union_dispatch<Assign>(index_, data_, variant.data_);
 		}
 		else {
 			union_dispatch<Destruct>(index_, data_);
-			union_dispatch<CopyConstruct>(variant.index_, data_, variant.data_);
+			union_dispatch<Construct>(variant.index_, data_, variant.data_);
 			index_ = variant.index_;
 		}
 		return *this;
 	}
 	Variant& operator =(Variant&& variant) {
 		if (index_ == variant.index_) {
-			union_dispatch<MoveAssign>(index_, data_, std::move(variant).data_);
+			union_dispatch<Assign>(index_, data_, std::move(variant).data_);
 		}
 		else {
 			union_dispatch<Destruct>(index_, data_);
-			union_dispatch<MoveConstruct>(variant.index_, data_, std::move(variant).data_);
+			union_dispatch<Construct>(variant.index_, data_, std::move(variant).data_);
 			index_ = variant.index_;
 		}
 		return *this;
@@ -230,7 +221,7 @@ public:
 		return get<index_of<U>>(variant);
 	}
 	template <class F> void visit(F&& f) {
-		union_dispatch<Visit<F>>(index_, data_, std::forward<F>(f));
+		union_dispatch<Visit>(index_, data_, std::forward<F>(f));
 	}
 };
 
