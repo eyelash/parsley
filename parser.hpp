@@ -493,62 +493,54 @@ template <class... T> struct OperatorLevels {
 	Tuple<T...> t;
 	constexpr OperatorLevels(T... t): t(t...) {}
 	using R = get_success_type<typename IndexToType<sizeof...(T) - 1, T...>::type>;
-	template <std::size_t level = 0, std::size_t I = 0> Result<R> parse_left(Context& context) const {
-		if constexpr (level == sizeof...(T) - 1) {
-			return get<level>(t).parse(context);
+	template <std::size_t level, std::size_t L = 0, std::size_t I = 0> Result<R> parse_left(Context& context) const {
+		if constexpr (L == sizeof...(T) - 1) {
+			Result<R> left_result = get<L>(t).parse(context);
+			if (Error* error = left_result.get_error()) {
+				return std::move(*error);
+			}
+			if (Failure* failure = left_result.get_failure()) {
+				return std::move(*failure);
+			}
+			R left = std::move(*left_result.get_success());
+			return parse_right<level>(context, left);
 		}
-		else if constexpr (I == IndexToType<level, T...>::type::size()) {
-			return parse_left<level + 1, 0>(context);
+		else if constexpr (I == IndexToType<L, T...>::type::size()) {
+			return parse_left<level, L + 1, 0>(context);
 		}
 		else {
-			auto result = get<I>(get<level>(t).t).template parse_left<level>(context, *this);
+			auto result = get<I>(get<L>(t).t).template parse_left<L>(context, *this);
 			if (Error* error = result.get_error()) {
 				return std::move(*error);
 			}
 			if (Failure* failure = result.get_failure()) {
-				return parse_left<level, I + 1>(context);
+				return parse_left<level, L, I + 1>(context);
 			}
-			return std::move(*result.get_success());
+			R left = std::move(*result.get_success());
+			return parse_right<level>(context, left);
 		}
 	}
-	template <std::size_t level = 0, std::size_t I = 0> Result<R> parse_right(Context& context, R& left) const {
-		if constexpr (level == sizeof...(T) - 1) {
-			return Failure();
+	template <std::size_t level, std::size_t L = level, std::size_t I = 0> Result<R> parse_right(Context& context, R& left) const {
+		if constexpr (L == sizeof...(T) - 1) {
+			return std::move(left);
 		}
-		else if constexpr (I == IndexToType<level, T...>::type::size()) {
-			return parse_right<level + 1, 0>(context, left);
+		else if constexpr (I == IndexToType<L, T...>::type::size()) {
+			return parse_right<level, L + 1, 0>(context, left);
 		}
 		else {
-			auto result = get<I>(get<level>(t).t).template parse_right<level>(context, left, *this);
+			auto result = get<I>(get<L>(t).t).template parse_right<L>(context, left, *this);
 			if (Error* error = result.get_error()) {
 				return std::move(*error);
 			}
 			if (Failure* failure = result.get_failure()) {
-				return parse_right<level, I + 1>(context, left);
+				return parse_right<level, L, I + 1>(context, left);
 			}
-			return std::move(*result.get_success());
+			left = std::move(*result.get_success());
+			return parse_right<level>(context, left);
 		}
 	}
 	template <std::size_t level> Result<R> parse_level(Context& context) const {
-		Result<R> left_result = parse_left(context);
-		if (Error* error = left_result.get_error()) {
-			return std::move(*error);
-		}
-		if (Failure* failure = left_result.get_failure()) {
-			return std::move(*failure);
-		}
-		R left = std::move(*left_result.get_success());
-		while (true) {
-			Result<R> result = parse_right<level>(context, left);
-			if (Error* error = result.get_error()) {
-				return std::move(*error);
-			}
-			if (Failure* failure = result.get_failure()) {
-				break;
-			}
-			left = std::move(*result.get_success());
-		}
-		return std::move(left);
+		return parse_left<level>(context);
 	}
 	Result<R> parse(Context& context) const {
 		return parse_level<0>(context);
