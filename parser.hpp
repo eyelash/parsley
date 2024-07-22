@@ -481,6 +481,52 @@ template <class P, class A, A (*F)(A, A)> struct InfixRTL<P, F> {
 	}
 };
 
+template <class P, auto F> struct Prefix;
+template <class P, class A, A (*F)(A)> struct Prefix<P, F> {
+	P p;
+	constexpr Prefix(P p): p(p) {}
+	template <std::size_t level, class O> Result<A> parse_left(Context& context, const O& levels) const {
+		auto result = p.parse(context);
+		if (Error* error = result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = result.get_failure()) {
+			return std::move(*failure);
+		}
+		auto right_result = levels.template parse_level<level>(context);
+		if (Error* error = right_result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = right_result.get_failure()) {
+			return std::move(*failure);
+		}
+		A right = std::move(*right_result.get_success());
+		return F(std::move(right));
+	}
+	template <std::size_t level, class O> Result<A> parse_right(Context& context, A& left, const O& levels) const {
+		return Failure();
+	}
+};
+
+template <class P, auto F> struct Postfix;
+template <class P, class A, A (*F)(A)> struct Postfix<P, F> {
+	P p;
+	constexpr Postfix(P p): p(p) {}
+	template <std::size_t level, class O> Result<A> parse_left(Context& context, const O& levels) const {
+		return Failure();
+	}
+	template <std::size_t level, class O> Result<A> parse_right(Context& context, A& left, const O& levels) const {
+		auto result = p.parse(context);
+		if (Error* error = result.get_error()) {
+			return std::move(*error);
+		}
+		if (Failure* failure = result.get_failure()) {
+			return std::move(*failure);
+		}
+		return F(std::move(left));
+	}
+};
+
 template <class... T> struct OperatorLevel {
 	Tuple<T...> t;
 	constexpr OperatorLevel(T... t): t(t...) {}
@@ -558,6 +604,18 @@ template <auto F, class P> constexpr InfixRTL<P, F> infix_rtl_(P p) {
 }
 template <auto F, class P> constexpr auto infix_rtl(P p) {
 	return infix_rtl_<F>(get_parser(p));
+}
+template <auto F, class P> constexpr Prefix<P, F> prefix_(P p) {
+	return Prefix<P, F>(p);
+}
+template <auto F, class P> constexpr auto prefix(P p) {
+	return prefix_<F>(get_parser(p));
+}
+template <auto F, class P> constexpr Postfix<P, F> postfix_(P p) {
+	return Postfix<P, F>(p);
+}
+template <auto F, class P> constexpr auto postfix(P p) {
+	return postfix_<F>(get_parser(p));
 }
 template <class... T> constexpr auto operator_level(T... t) {
 	return OperatorLevel(t...);
