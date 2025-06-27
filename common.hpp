@@ -29,6 +29,29 @@ public:
 	}
 };
 
+template <std::size_t I> class Index {
+public:
+	constexpr Index() {}
+};
+
+template <class... T> class Tuple;
+template <> class Tuple<> {
+public:
+	constexpr Tuple() {}
+};
+template <class T0, class... T> class Tuple<T0, T...> {
+public:
+	T0 head;
+	Tuple<T...> tail;
+	template <class A0, class... A> constexpr Tuple(A0&& a0, A&&... a): head(std::forward<A0>(a0)), tail(std::forward<A>(a)...) {}
+	const T0& get(Index<0>) const {
+		return head;
+	}
+	template <std::size_t I> const auto& get(Index<I>) const {
+		return tail.get(Index<I - 1>());
+	}
+};
+
 class StringView {
 	const char* string;
 	std::size_t length;
