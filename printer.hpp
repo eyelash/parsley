@@ -75,16 +75,16 @@ template <class P> constexpr std::enable_if_t<is_printer<P>::value, P> get_print
 	return p;
 }
 
-template <class P> void print(std::ostream& ostream, const P& p) {
+template <class P> void print(std::ostream& ostream, P&& p) {
 	PrintContext context(ostream);
-	p.print(context);
+	get_printer(std::forward<P>(p)).print(context);
 }
-template <class P> void print(const P& p) {
-	print(std::cout, p);
+template <class P> void print(P&& p) {
+	print(std::cout, std::forward<P>(p));
 }
-template <class P> std::string print_to_string(const P& p) {
+template <class P> std::string print_to_string(P&& p) {
 	std::ostringstream ostream;
-	print(ostream, p);
+	print(ostream, std::forward<P>(p));
 	return ostream.str();
 }
 
@@ -261,7 +261,6 @@ public:
 		}
 	}
 };
-
 constexpr PluralPrinter print_plural(const char* word, unsigned int count) {
 	return PluralPrinter(word, count);
 }
@@ -293,44 +292,43 @@ template <class P, class C> void print_message(PrintContext& context, const C& c
 template <class P, class C> void print_message(PrintContext& context, const char* path, std::size_t source_position, const C& color, const char* severity, const P& p) {
 	if (path == nullptr) {
 		print_message(context, color, severity, p);
+		return;
 	}
-	else {
-		SourceFile file(path);
-		unsigned int line_number = 1;
-		const char* c = file.begin();
-		const char* end = file.end();
-		const char* position = std::min(c + source_position, end);
-		const char* line_start = c;
-		while (c < position) {
-			if (*c == '\n') {
-				++c;
-				++line_number;
-				line_start = c;
-			}
-			else {
-				++c;
-			}
+	SourceFile file(path);
+	unsigned int line_number = 1;
+	const char* c = file.begin();
+	const char* end = file.end();
+	const char* position = std::min(c + source_position, end);
+	const char* line_start = c;
+	while (c < position) {
+		if (*c == '\n') {
+			++c;
+			++line_number;
+			line_start = c;
 		}
-		const unsigned int column = 1 + (c - line_start);
-
-		bold(format("%:%:%: ", path, print_number(line_number), print_number(column))).print(context);
-		print_message(context, color, severity, p);
-
-		c = line_start;
-		while (c < end && *c != '\n') {
-			context.print(*c);
+		else {
 			++c;
 		}
-		context.print('\n');
-
-		c = line_start;
-		while (c < position) {
-			context.print(*c == '\t' ? '\t' : ' ');
-			++c;
-		}
-		bold(color('^')).print(context);
-		context.print('\n');
 	}
+	const unsigned int column = 1 + (c - line_start);
+
+	bold(format("%:%:%: ", path, print_number(line_number), print_number(column))).print(context);
+	print_message(context, color, severity, p);
+
+	c = line_start;
+	while (c < end && *c != '\n') {
+		context.print(*c);
+		++c;
+	}
+	context.print('\n');
+
+	c = line_start;
+	while (c < position) {
+		context.print(*c == '\t' ? '\t' : ' ');
+		++c;
+	}
+	bold(color('^')).print(context);
+	context.print('\n');
 }
 
 class Error {
@@ -338,7 +336,7 @@ public:
 	const char* path;
 	std::size_t source_position;
 	std::string p;
-	template <class P> Error(const char* path, std::size_t source_position, P&& p): path(path), source_position(source_position), p(print_to_string(get_printer(std::forward<P>(p)))) {}
+	template <class P> Error(const char* path, std::size_t source_position, P&& p): path(path), source_position(source_position), p(print_to_string(std::forward<P>(p))) {}
 };
 class ErrorPrinter {
 	const Error* error;
