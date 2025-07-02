@@ -40,6 +40,9 @@ public:
 	void restore(Savepoint savepoint) {
 		position = savepoint;
 	}
+	StringView operator -(Savepoint savepoint) const {
+		return StringView(savepoint, position - savepoint);
+	}
 	std::size_t get_position() const {
 		return position - begin;
 	}
@@ -99,6 +102,15 @@ template <class P> class Peek {
 	P p;
 public:
 	constexpr Peek(P p): p(p) {}
+	const P& get() const {
+		return p;
+	}
+};
+
+template <class P> class ToStringView {
+	P p;
+public:
+	constexpr ToStringView(P p): p(p) {}
 	const P& get() const {
 		return p;
 	}
@@ -166,6 +178,9 @@ template <class P> constexpr auto not_(P p) {
 }
 template <class P> constexpr auto peek(P p) {
 	return Peek(get_parser(p));
+}
+template <class P> constexpr auto to_string_view(P p) {
+	return ToStringView(get_parser(p));
 }
 constexpr Error error(const StringView& s) {
 	return Error(s);
@@ -263,6 +278,16 @@ template <class P> bool parse(const Peek<P>& p, Context& context) {
 	}
 	else {
 		return false;
+	}
+}
+
+template <class P> StringView parse(const ToStringView<P>& p, Context& context) {
+	const auto savepoint = context.save();
+	if (parse(p.get(), context)) {
+		return context - savepoint;
+	}
+	else {
+		return StringView();
 	}
 }
 
