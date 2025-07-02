@@ -72,16 +72,16 @@ template <class P> constexpr std::enable_if_t<is_printer<P>::value, P> get_print
 	return p;
 }
 
-template <class P> void print(std::ostream& ostream, const P& p) {
+template <class P> void print(std::ostream& ostream, P&& p) {
 	PrintContext context(ostream);
-	p.print(context);
+	get_printer(std::forward<P>(p)).print(context);
 }
-template <class P> void print(const P& p) {
-	print(std::cout, p);
+template <class P> void print(P&& p) {
+	print(std::cout, std::forward<P>(p));
 }
-template <class P> std::string print_to_string(const P& p) {
+template <class P> std::string print_to_string(P&& p) {
 	std::ostringstream ostream;
-	print(ostream, p);
+	print(ostream, std::forward<P>(p));
 	return ostream.str();
 }
 
@@ -258,7 +258,6 @@ public:
 		}
 	}
 };
-
 constexpr PluralPrinter print_plural(const char* word, unsigned int count) {
 	return PluralPrinter(word, count);
 }
