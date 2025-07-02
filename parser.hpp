@@ -115,6 +115,11 @@ public:
 	constexpr Expect(const StringView& s): s(s) {}
 };
 
+template <class P> class Reference_ {
+public:
+	constexpr Reference_() {}
+};
+
 template <class F, class = bool> struct is_char_class: std::false_type {};
 template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declval<char>()))>: std::true_type {};
 
@@ -166,6 +171,9 @@ constexpr Error error(const StringView& s) {
 }
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);
+}
+template <class T> constexpr auto reference() {
+	return Reference_<T>();
 }
 
 template <class F> bool parse(const Char<F>& p, Context& context) {
@@ -270,4 +278,8 @@ inline bool parse(const Expect& p, Context& context) {
 		context.set_error(format("expected \"%\"", p.s));
 		return false;
 	}
+}
+
+template <class P> bool parse(const Reference_<P>& p, Context& context) {
+	return parse(P::parser, context);
 }
