@@ -1,11 +1,13 @@
 #pragma once
 
 #include "common.hpp"
+#include "printer.hpp"
 
 class Context {
 	const char* position;
 	const char* end;
 	const char* begin;
+	std::string error;
 public:
 	template <std::size_t N> constexpr Context(const char (&s)[N]): position(s), end(s + N), begin(s) {}
 	explicit constexpr operator bool() const {
@@ -17,6 +19,18 @@ public:
 	Context& operator ++() {
 		++position;
 		return *this;
+	}
+	bool has_error() const {
+		return !error.empty();
+	}
+	void set_error(std::string&& error) {
+		this->error = std::move(error);
+	}
+	template <class P> void set_error(P&& p) {
+		this->error = print_to_string(std::forward<P>(p));
+	}
+	const std::string& get_error() const {
+		return error;
 	}
 	using Savepoint = const char*;
 	Savepoint save() const {
@@ -89,6 +103,18 @@ public:
 	}
 };
 
+class Error {
+public:
+	StringView s;
+	constexpr Error(const StringView& s): s(s) {}
+};
+
+class Expect {
+public:
+	StringView s;
+	constexpr Expect(const StringView& s): s(s) {}
+};
+
 template <class F, class = bool> struct is_char_class: std::false_type {};
 template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declval<char>()))>: std::true_type {};
 
@@ -135,6 +161,12 @@ template <class P> constexpr auto not_(P p) {
 template <class P> constexpr auto peek(P p) {
 	return Peek(get_parser(p));
 }
+constexpr Error error(const StringView& s) {
+	return Error(s);
+}
+constexpr Expect expect(const StringView& s) {
+	return Expect(s);
+}
 
 template <class F> bool parse(const Char<F>& p, Context& context) {
 	if (context && p(*context)) {
@@ -161,6 +193,9 @@ template <class... P, std::size_t I> bool parse(const Sequence<P...>& p, Context
 	}
 	else {
 		if (!parse(p.get(i), context)) {
+			if (context.has_error()) {
+				return false;
+			}
 			context.restore(savepoint);
 			return false;
 		}
@@ -179,6 +214,9 @@ template <class... P, std::size_t I> bool parse(const Choice<P...>& p, Context& 
 		if (parse(p.get(i), context)) {
 			return true;
 		}
+		if (context.has_error()) {
+			return false;
+		}
 		return parse(p, context, Index<I + 1>());
 	}
 }
@@ -188,6 +226,9 @@ template <class... P> bool parse(const Choice<P...>& p, Context& context) {
 
 template <class P> bool parse(const Repetition<P>& p, Context& context) {
 	while (parse(p.get(), context)) {}
+	if (context.has_error()) {
+		return false;
+	}
 	return true;
 }
 
@@ -198,6 +239,9 @@ template <class P> bool parse(const Not<P>& p, Context& context) {
 		return false;
 	}
 	else {
+		if (context.has_error()) {
+			return false;
+		}
 		return true;
 	}
 }
@@ -209,6 +253,21 @@ template <class P> bool parse(const Peek<P>& p, Context& context) {
 		return true;
 	}
 	else {
+		return false;
+	}
+}
+
+inline bool parse(const Error& p, Context& context) {
+	context.set_error(p.s);
+	return false;
+}
+
+inline bool parse(const Expect& p, Context& context) {
+	if (parse(get_parser(p.s), context)) {
+		return true;
+	}
+	else {
+		context.set_error(format("expected \"%\"", p.s));
 		return false;
 	}
 }
