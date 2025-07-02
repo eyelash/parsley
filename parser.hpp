@@ -9,6 +9,7 @@ class Context {
 	const char* begin;
 	std::string error;
 public:
+	Context(const StringView& s): position(s.begin()), end(s.end()), begin(s.begin()) {}
 	template <std::size_t N> constexpr Context(const char (&s)[N]): position(s), end(s + N), begin(s) {}
 	explicit constexpr operator bool() const {
 		return position < end;
