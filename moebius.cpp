@@ -73,45 +73,44 @@ class MoebiusParser {
 		}
 		return IntLiteral(number);
 	}
-	Parser<Expression> int_literal = map<to_int_literal>(sequence(numeric, zero_or_more(numeric)));
-	Parser<Expression> expression_last = choice(
+	static constexpr auto parse_int_literal = map<to_int_literal>(sequence(numeric, zero_or_more(numeric)));
+	struct ParseExpression;
+	static constexpr auto parse_expression = cast<Expression>(reference<ParseExpression>());
+	static constexpr auto parse_expression_last = choice(
 		sequence(
 			'(',
 			parse_white_space,
-			&expression,
+			parse_expression,
 			parse_white_space,
 			expect(")")
 		),
-		&int_literal,
+		parse_int_literal,
 		error<Expression>("expected an expression")
 	);
 	static IntLiteral add(IntLiteral left, IntLiteral right) {
 		return IntLiteral(left.get_value() + right.get_value());
 	}
-	Parser<Expression> expression = operator_levels(
-		binary_left_to_right(
-			binary_operator<add>(operator_('+'))
-		),
-		&expression_last
-	);
-	Parser<Expression> program = sequence(
+	struct ParseExpression {
+		static constexpr auto parser = operator_levels(
+			binary_left_to_right(
+				binary_operator<add>(operator_('+'))
+			),
+			parse_expression_last
+		);
+	};
+	static constexpr auto program = sequence(
 		parse_white_space,
-		&expression,
+		parse_expression,
 		parse_white_space,
 		choice(not_(any_char), error("unexpected character at end of program"))
 	);
 public:
-	Result<Expression> parse(Context& context) const {
+	static Result<Expression> parse_program(const char* path) {
+		SourceFile file(path);
+		Context context(&file);
 		return program.parse(context);
 	}
 };
-
-Result<Expression> parse_program(const char* path) {
-	static MoebiusParser parser;
-	SourceFile file(path);
-	Context context(&file);
-	return parser.parse(context);
-}
 
 /*---------------*\
  |  INTERPRETER  |
@@ -124,16 +123,16 @@ void interpret_program(const Expression& program) {
 
 int main(int argc, char** argv) {
 	if (argc > 1) {
-		auto result = parse_program(argv[1]);
+		auto result = MoebiusParser::parse_program(argv[1]);
 		if (result.get_failure()) {
-			print(std::cerr, ln("Failure"));
+			print(std::cerr, ln(bold(yellow("failure"))));
 			return 1;
 		}
 		else if (Error* error = result.get_error()) {
 			print(std::cerr, ErrorPrinter(error));
 			return 1;
 		}
-		std::cout << "Success\n";
+		print(ln(bold(green("success"))));
 		interpret_program(*result.get_success());
 	}
 }

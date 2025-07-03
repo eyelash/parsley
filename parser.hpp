@@ -321,10 +321,19 @@ public:
 	}
 };
 
-template <class T, class R> class Reference_ {
+template <class P, class R> class Cast {
+	P p;
+public:
+	constexpr Cast(P p): p(p) {}
+	Result<R> parse(Context& context) const {
+		return p.parse(context);
+	}
+};
+
+template <class T> class Reference_ {
 public:
 	constexpr Reference_() {}
-	Result<R> parse(Context& context) const {
+	auto parse(Context& context) const {
 		return T::parser.parse(context);
 	}
 };
@@ -423,8 +432,14 @@ template <class R = BasicResult::type> constexpr Error_<R> error(const StringVie
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);
 }
-template <class T, class R = BasicResult::type> constexpr auto reference() {
-	return Reference_<T, R>();
+template <class R, class P> constexpr Cast<P, R> cast_(P p) {
+	return Cast<P, R>(p);
+}
+template <class R, class P> constexpr auto cast(P p) {
+	return cast_<R>(get_parser(p));
+}
+template <class T> constexpr auto reference() {
+	return Reference_<T>();
 }
 
 template <class P, auto F> struct BinaryOperator;
