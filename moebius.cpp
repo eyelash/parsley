@@ -118,10 +118,12 @@ public:
 
 void interpret_program(const Expression& program) {
 	const std::int32_t result = program.get_value();
+	using namespace printer;
 	print(ln(print_number(result)));
 }
 
 int main(int argc, char** argv) {
+	using namespace printer;
 	if (argc > 1) {
 		auto result = MoebiusParser::parse_program(argv[1]);
 		if (result.get_failure()) {

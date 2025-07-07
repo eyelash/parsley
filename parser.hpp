@@ -321,7 +321,7 @@ public:
 			return std::move(*error);
 		}
 		if (Failure* failure = result.get_failure()) {
-			return Error(context.get_path(), context.get_position(), format("expected \"%\"", s));
+			return Error(context.get_path(), context.get_position(), printer::format("expected \"%\"", s));
 		}
 		return BasicResult();
 	}
