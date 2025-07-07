@@ -201,6 +201,13 @@ public:
 		}
 		context.print(static_cast<char>('0' + n % 10));
 	}
+	unsigned int get_width() const {
+		unsigned int width = 0;
+		if (n >= 10) {
+			width += NumberPrinter(n / 10).get_width();
+		}
+		return width + 1;
+	}
 };
 constexpr NumberPrinter print_number(unsigned int n) {
 	return NumberPrinter(n);
@@ -242,6 +249,21 @@ public:
 };
 constexpr OctalPrinter print_octal(unsigned int n, unsigned int digits = 1) {
 	return OctalPrinter(n, digits);
+}
+
+template <class P> class RepeatPrinter {
+	P p;
+	unsigned int count;
+public:
+	constexpr RepeatPrinter(P p, unsigned int count): p(p), count(count) {}
+	void print(PrintContext& context) const {
+		for (unsigned int i = 0; i < count; ++i) {
+			p.print(context);
+		}
+	}
+};
+template <class P> constexpr auto repeat(P&& p, unsigned int count) {
+	return RepeatPrinter(get_printer(std::forward<P>(p)), count);
 }
 
 class PluralPrinter {
@@ -289,10 +311,15 @@ template <class P, class C> void print_message(PrintContext& context, const char
 		}
 	}
 	const unsigned int column = 1 + (c - line_start);
+	const unsigned int line_number_width = print_number(line_number).get_width();
 
-	bold(format("%:%:%: ", path, print_number(line_number), print_number(column))).print(context);
 	print_message(context, color, severity, p);
 
+	ln(format(" %--> %:%:%:", repeat(' ', line_number_width), path, print_number(line_number), print_number(column))).print(context);
+
+	ln(format(" % |", repeat(' ', line_number_width))).print(context);
+
+	format(" % | ", print_number(line_number)).print(context);
 	c = line_start;
 	while (c < end && *c != '\n') {
 		context.print(*c);
@@ -300,6 +327,7 @@ template <class P, class C> void print_message(PrintContext& context, const char
 	}
 	context.print('\n');
 
+	format(" % | ", repeat(' ', line_number_width)).print(context);
 	c = line_start;
 	while (c < position) {
 		context.print(*c == '\t' ? '\t' : ' ');
