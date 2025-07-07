@@ -2,7 +2,6 @@
 
 #include "common.hpp"
 #include "printer.hpp"
-#include <vector>
 
 template <class U, class... T> struct ContainsType;
 template <class U> struct ContainsType<U>: std::false_type {};
@@ -57,6 +56,13 @@ public:
 class Failure {
 public:
 	constexpr Failure() {}
+};
+class Error {
+public:
+	const char* path;
+	std::size_t source_position;
+	std::string message;
+	template <class P> Error(const char* path, std::size_t source_position, P&& p): path(path), source_position(source_position), message(print_to_string(std::forward<P>(p))) {}
 };
 template <class T> class Result {
 	Variant<Success<T>, Failure, Error> variant;

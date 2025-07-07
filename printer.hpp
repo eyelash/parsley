@@ -1,11 +1,8 @@
 #pragma once
 
-#include <cstddef>
+#include "common.hpp"
 #include <iostream>
 #include <sstream>
-#include <fstream>
-#include <vector>
-#include <iterator>
 
 class PrintContext {
 	std::ostream& ostream;
@@ -265,25 +262,6 @@ constexpr PluralPrinter print_plural(const char* word, unsigned int count) {
 	return PluralPrinter(word, count);
 }
 
-class SourceFile {
-	const char* path;
-	std::vector<char> content;
-public:
-	SourceFile(const char* path): path(path) {
-		std::ifstream file(path);
-		content.insert(content.end(), std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-	}
-	const char* get_path() const {
-		return path;
-	}
-	const char* begin() const {
-		return content.data();
-	}
-	const char* end() const {
-		return content.data() + content.size();
-	}
-};
-
 template <class P, class C> void print_message(PrintContext& context, const C& color, const char* severity, const P& p) {
 	bold(color(format("%: ", severity))).print(context);
 	p.print(context);
@@ -330,19 +308,7 @@ template <class P, class C> void print_message(PrintContext& context, const char
 	bold(color('^')).print(context);
 	context.print('\n');
 }
-
-class Error {
-public:
-	const char* path;
-	std::size_t source_position;
-	std::string p;
-	template <class P> Error(const char* path, std::size_t source_position, P&& p): path(path), source_position(source_position), p(print_to_string(std::forward<P>(p))) {}
-};
-class ErrorPrinter {
-	const Error* error;
-public:
-	ErrorPrinter(const Error* error): error(error) {}
-	void print(PrintContext& context) const {
-		print_message(context, error->path, error->source_position, red, "error", get_printer(error->p));
-	}
-};
+inline void print_error(const char* path, std::size_t source_position, const std::string& message) {
+	PrintContext context(std::cerr);
+	print_message(context, path, source_position, red, "error", get_printer(message));
+}

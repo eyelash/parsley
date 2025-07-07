@@ -6,6 +6,9 @@
 #include <utility>
 #include <string>
 #include <new>
+#include <fstream>
+#include <vector>
+#include <iterator>
 
 template <class T> class Reference {
 	T* pointer;
@@ -379,3 +382,22 @@ constexpr CodePoints code_points(const StringView& s) {
 inline CodePoints code_points(const std::string& s) {
 	return CodePoints(StringView(s.data(), s.size()));
 }
+
+class SourceFile {
+	const char* path;
+	std::vector<char> content;
+public:
+	SourceFile(const char* path): path(path) {
+		std::ifstream file(path);
+		content.insert(content.end(), std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+	}
+	const char* get_path() const {
+		return path;
+	}
+	const char* begin() const {
+		return content.data();
+	}
+	const char* end() const {
+		return content.data() + content.size();
+	}
+};

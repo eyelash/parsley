@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 		else if (Error* error = result.get_error()) {
-			print(std::cerr, ErrorPrinter(error));
+			print_error(error->path, error->source_position, error->message);
 			return 1;
 		}
 		print(ln(bold(green("success"))));
