@@ -67,7 +67,7 @@ public:
 template <class T> class Result {
 	Variant<Success<T>, Failure, Error> variant;
 public:
-	template <class... A> Result(A&&... a): variant(TypeTag<Success<T>>(), std::forward<A>(a)...) {}
+	template <class... A> Result(A&&... a): variant(Type<Success<T>>(), std::forward<A>(a)...) {}
 	Result(Failure&& failure): variant(std::move(failure)) {}
 	Result(Error&& error): variant(std::move(error)) {}
 	using type = T;

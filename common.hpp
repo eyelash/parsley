@@ -34,6 +34,63 @@ public:
 	}
 };
 
+template <class T> class Type {
+public:
+	constexpr Type() {}
+	using type = T;
+};
+
+class Undefined {
+public:
+	constexpr Undefined() {}
+};
+
+template <std::size_t I> class Index {
+public:
+	static constexpr std::size_t value = I;
+	constexpr operator std::size_t() const noexcept {
+		return I;
+	}
+	constexpr std::size_t operator ()() const noexcept {
+		return I;
+	}
+};
+
+template <class... T> class Types;
+
+template <class T, std::size_t I> struct TypesAt;
+template <class T0, class... T> struct TypesAt<Types<T0, T...>, 0> {
+	using type = Type<T0>;
+};
+template <class T0, class... T, std::size_t I> struct TypesAt<Types<T0, T...>, I> {
+	using type = typename TypesAt<Types<T...>, I - 1>::type;
+};
+
+template <class T, class U, std::size_t I = 0> struct TypesFind;
+template <class U, std::size_t I> struct TypesFind<Types<>, U, I> {
+	using type = Undefined;
+};
+template <class T0, class... T, std::size_t I> struct TypesFind<Types<T0, T...>, T0, I> {
+	using type = Index<I>;
+};
+template <class T0, class... T, class U, std::size_t I> struct TypesFind<Types<T0, T...>, U, I> {
+	using type = typename TypesFind<Types<T...>, U, I + 1>::type;
+};
+
+template <class... T> class Types {
+public:
+	constexpr Types() {}
+	template <std::size_t I> constexpr auto operator [](Index<I>) const -> typename TypesAt<Types, I>::type {
+		return {};
+	}
+	template <std::size_t I> constexpr auto at(Index<I>) const -> typename TypesAt<Types, I>::type {
+		return {};
+	}
+	template <class U> constexpr auto find(Type<U>) const -> typename TypesFind<Types, U>::type {
+		return {};
+	}
+};
+
 template <std::size_t I, class... T> struct IndexToType;
 template <class T0, class... T> struct IndexToType<0, T0, T...> {
 	using type = T0;
@@ -137,10 +194,6 @@ template <class D, class T, class... A> auto union_dispatch(std::size_t index, T
 	return dispatch<D>(std::make_index_sequence<GetSize<T>::value>(), index, std::forward<T>(t), std::forward<A>(a)...);
 }
 
-template <class T> struct TypeTag {
-	constexpr TypeTag() {}
-};
-
 template <class... T> class Variant {
 	Union<T...> data_;
 	std::size_t index_;
@@ -170,7 +223,7 @@ public:
 		union_construct<I>(data_, std::forward<U>(u));
 		index_ = I;
 	}
-	template <class U, class... A> Variant(TypeTag<U>, A&&... a) {
+	template <class U, class... A> Variant(Type<U>, A&&... a) {
 		constexpr std::size_t I = index_of<U>;
 		union_construct<I>(data_, std::forward<A>(a)...);
 		index_ = I;
