@@ -136,6 +136,24 @@ public:
 	}
 };
 
+template <class T, class P> class Cast {
+	P p;
+public:
+	constexpr Cast(P p): p(p) {}
+	const P& get() const {
+		return p;
+	}
+};
+
+template <class T, class P> class Collect {
+	P p;
+public:
+	constexpr Collect(P p): p(p) {}
+	const P& get() const {
+		return p;
+	}
+};
+
 class Error {
 public:
 	StringView s;
@@ -201,6 +219,18 @@ template <class P> constexpr auto peek(P p) {
 }
 template <class P> constexpr auto to_string_view(P p) {
 	return ToStringView(get_parser(p));
+}
+template <class T, class P> constexpr Cast<T, P> cast_(P p) {
+	return Cast<T, P>(p);
+}
+template <class T, class P> constexpr auto cast(P p) {
+	return cast_<T>(get_parser(p));
+}
+template <class T, class P> constexpr Collect<T, P> collect_(P p) {
+	return Collect<T, P>(p);
+}
+template <class T, class P> constexpr auto collect(P p) {
+	return collect_<T>(get_parser(p));
 }
 constexpr Error error(const StringView& s) {
 	return Error(s);
@@ -321,4 +351,150 @@ inline bool parse(const Expect& p, Context& context) {
 
 template <class P> bool parse(const Reference_<P>& p, Context& context) {
 	return parse(P::parser, context);
+}
+
+enum Result: char {
+	MATCH,
+	NO_MATCH,
+	ERROR
+};
+
+class IgnoreCallback {
+public:
+	constexpr IgnoreCallback() {}
+	template <class T> constexpr void push(const T&) const {}
+	template <class T> constexpr void operator ()(const T&) const {}
+};
+
+template <class F, class C> Result parse2(const Char<F>& p, Context& context, const C& callback) {
+	if (context && p(*context)) {
+		++context;
+		return MATCH;
+	}
+	return NO_MATCH;
+}
+
+template <class C> Result parse2(const String& p, Context& context, const C& callback) {
+	const auto savepoint = context.save();
+	for (char c: p) {
+		if (parse2(get_parser(c), context, callback) == NO_MATCH) {
+			context.restore(savepoint);
+			return NO_MATCH;
+		}
+	}
+	return MATCH;
+}
+
+template <class C> Result parse2(const Sequence<>& p, Context& context, const Context::Savepoint& savepoint, const C& callback) {
+	return MATCH;
+}
+template <class P0, class... P, class C> Result parse2(const Sequence<P0, P...>& p, Context& context, const Context::Savepoint& savepoint, const C& callback) {
+	const Result result = parse2(p.head, context, callback);
+	if (result == MATCH) {
+		return parse2(p.tail, context, savepoint, callback);
+	}
+	else if (result == ERROR) {
+		return ERROR;
+	}
+	context.restore(savepoint);
+	return NO_MATCH;
+}
+template <class... P, class C> Result parse2(const Sequence<P...>& p, Context& context, const C& callback) {
+	return parse2(p, context, context.save(), callback);
+}
+
+template <class C> Result parse2(const Choice<>& p, Context& context, const C& callback) {
+	return NO_MATCH;
+}
+template <class P0, class... P, class C> Result parse2(const Choice<P0, P...>& p, Context& context, const C& callback) {
+	const Result result = parse2(p.head, context, callback);
+	if (result == MATCH) {
+		return MATCH;
+	}
+	if (result == ERROR) {
+		return ERROR;
+	}
+	return parse2(p.tail, context, callback);
+}
+
+template <class P, class C> Result parse2(const Repetition<P>& p, Context& context, const C& callback) {
+	Result result;
+	while ((result = parse2(p.get(), context, callback)) == MATCH) {}
+	if (result == ERROR) {
+		return ERROR;
+	}
+	return MATCH;
+}
+
+template <class P, class C> Result parse2(const Not<P>& p, Context& context, const C& callback) {
+	const auto savepoint = context.save();
+	const Result result = parse2(p.get(), context, callback);
+	if (result == MATCH) {
+		context.restore(savepoint);
+		return NO_MATCH;
+	}
+	if (result == ERROR) {
+		return ERROR;
+	}
+	return MATCH;
+}
+
+template <class P, class C> Result parse2(const ToStringView<P>& p, Context& context, const C& callback) {
+	const auto savepoint = context.save();
+	const Result result = parse2(p.get(), context, callback);
+	if (result == MATCH) {
+		callback.push(context - savepoint);
+	}
+	return result;
+}
+
+template <class T, class C> class CastCallback {
+	const C& callback;
+public:
+	CastCallback(const C& callback): callback(callback) {}
+	template <class A> void push(A&& a) const {
+		callback.push(T(std::forward<A>(a)));
+	}
+};
+
+template <class T, class P, class C> Result parse2(const Cast<T, P>& p, Context& context, const C& callback) {
+	return parse2(p.get(), context, CastCallback<T, C>(callback));
+}
+
+template <class T> class CollectCallback {
+	T& builder;
+public:
+	CollectCallback(T& builder): builder(builder) {}
+	template <class A> void push(A&& a) const {
+		builder.push(std::forward<A>(a));
+	}
+};
+
+template <class T, class P, class C> Result parse2(const Collect<T, P>& p, Context& context, const C& callback) {
+	T builder;
+	const Result result = parse2(p.get(), context, CollectCallback<T>(builder));
+	if (result == MATCH) {
+		callback.push(builder.build());
+	}
+	return result;
+}
+
+template <class C> Result parse2(const Error& p, Context& context, const C& callback) {
+	context.set_error(p.s);
+	return ERROR;
+}
+
+template <class C> Result parse2(const Expect& p, Context& context, const C& callback) {
+	const Result result = parse2(get_parser(p.s), context, callback);
+	if (result == MATCH) {
+		return MATCH;
+	}
+	else {
+		context.set_error(format("expected \"%\"", p.s));
+		return ERROR;
+	}
+}
+
+template <class P, class C> Result parse2(const Reference_<P>& p, Context& context, const C& callback) {
+	return parse2(P::parser, context, callback);
 }
