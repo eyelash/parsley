@@ -62,23 +62,43 @@ public:
 	constexpr String(const StringView& s): StringView(s) {}
 };
 
-template <class... P> class Sequence {
-	Tuple<P...> p;
+template <class... P> class Sequence;
+template <> class Sequence<> {
 public:
-	constexpr Sequence(P... p): p(p...) {}
-	template <std::size_t I> const auto& get(Index<I> i) const {
-		return p.get(i);
+	constexpr Sequence() {}
+};
+template <class P0, class... P> class Sequence<P0, P...> {
+public:
+	P0 head;
+	Sequence<P...> tail;
+	constexpr Sequence(P0 p0, P... p): head(p0), tail(p...) {}
+	const P0& get(Index<0>) const {
+		return head;
+	}
+	template <std::size_t I> const auto& get(Index<I>) const {
+		return tail.get(Index<I - 1>());
 	}
 };
+template <class... P> Sequence(P...) -> Sequence<P...>;
 
-template <class... P> class Choice {
-	Tuple<P...> p;
+template <class... P> class Choice;
+template <> class Choice<> {
 public:
-	constexpr Choice(P... p): p(p...) {}
-	template <std::size_t I> const auto& get(Index<I> i) const {
-		return p.get(i);
+	constexpr Choice() {}
+};
+template <class P0, class... P> class Choice<P0, P...> {
+public:
+	P0 head;
+	Choice<P...> tail;
+	constexpr Choice(P0 p0, P... p): head(p0), tail(p...) {}
+	const P0& get(Index<0>) const {
+		return head;
+	}
+	template <std::size_t I> const auto& get(Index<I>) const {
+		return tail.get(Index<I - 1>());
 	}
 };
+template <class... P> Choice(P...) -> Choice<P...>;
 
 template <class P> class Repetition {
 	P p;
@@ -211,41 +231,34 @@ inline bool parse(const String& p, Context& context) {
 	return true;
 }
 
-template <class... P, std::size_t I> bool parse(const Sequence<P...>& p, Context& context, Index<I> i, const Context::Savepoint& savepoint) {
-	if constexpr (I == sizeof...(P)) {
-		return true;
-	}
-	else {
-		if (!parse(p.get(i), context)) {
-			if (context.has_error()) {
-				return false;
-			}
-			context.restore(savepoint);
-			return false;
-		}
-		return parse(p, context, Index<I + 1>(), savepoint);
-	}
+inline bool parse(const Sequence<>& p, Context& context, const Context::Savepoint& savepoint) {
+	return true;
 }
-template <class... P> bool parse(const Sequence<P...>& p, Context& context) {
-	return parse(p, context, Index<0>(), context.save());
-}
-
-template <class... P, std::size_t I> bool parse(const Choice<P...>& p, Context& context, Index<I> i) {
-	if constexpr (I == sizeof...(P)) {
+template <class P0, class... P> bool parse(const Sequence<P0, P...>& p, Context& context, const Context::Savepoint& savepoint) {
+	if (parse(p.head, context)) {
+		return parse(p.tail, context, savepoint);
+	}
+	if (context.has_error()) {
 		return false;
 	}
-	else {
-		if (parse(p.get(i), context)) {
-			return true;
-		}
-		if (context.has_error()) {
-			return false;
-		}
-		return parse(p, context, Index<I + 1>());
-	}
+	context.restore(savepoint);
+	return false;
 }
-template <class... P> bool parse(const Choice<P...>& p, Context& context) {
-	return parse(p, context, Index<0>());
+template <class... P> bool parse(const Sequence<P...>& p, Context& context) {
+	return parse(p, context, context.save());
+}
+
+inline bool parse(const Choice<>& p, Context& context) {
+	return false;
+}
+template <class P0, class... P> bool parse(const Choice<P0, P...>& p, Context& context) {
+	if (parse(p.head, context)) {
+		return true;
+	}
+	if (context.has_error()) {
+		return false;
+	}
+	return parse(p.tail, context);
 }
 
 template <class P> bool parse(const Repetition<P>& p, Context& context) {
