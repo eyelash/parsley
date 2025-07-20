@@ -211,6 +211,9 @@ template <class P> constexpr auto zero_or_more(P p) {
 template <class P> constexpr auto one_or_more(P p) {
 	return sequence(p, repetition(p));
 }
+template <class P> constexpr auto optional(P p) {
+	return choice(p, sequence());
+}
 template <class P> constexpr auto not_(P p) {
 	return Not(get_parser(p));
 }
