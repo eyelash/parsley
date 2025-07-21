@@ -29,6 +29,11 @@ public:
 	}
 };
 
+template <class T> class Tag {
+public:
+	constexpr Tag() {}
+};
+
 template <std::size_t I> class Index {
 public:
 	constexpr Index() {}

@@ -154,6 +154,15 @@ public:
 	}
 };
 
+template <class T, class P> class Tagged {
+	P p;
+public:
+	constexpr Tagged(P p): p(p) {}
+	const P& get() const {
+		return p;
+	}
+};
+
 class Error {
 public:
 	StringView s;
@@ -234,6 +243,12 @@ template <class T, class P> constexpr Collect<T, P> collect_(P p) {
 }
 template <class T, class P> constexpr auto collect(P p) {
 	return collect_<T>(get_parser(p));
+}
+template <class T, class P> constexpr Tagged<T, P> tagged_(P p) {
+	return Tagged<T, P>(p);
+}
+template <class T, class P> constexpr auto tagged(P p) {
+	return tagged_<T>(get_parser(p));
 }
 constexpr Error error(const StringView& s) {
 	return Error(s);
@@ -480,6 +495,19 @@ template <class T, class P, class C> Result parse2(const Collect<T, P>& p, Conte
 		callback.push(builder.build());
 	}
 	return result;
+}
+
+template <class T, class C> class TaggedCallback {
+	const C& callback;
+public:
+	TaggedCallback(const C& callback): callback(callback) {}
+	template <class... A> void push(A&&... a) const {
+		callback.push(std::forward<A>(a)..., Tag<T>());
+	}
+};
+
+template <class T, class P, class C> Result parse2(const Tagged<T, P>& p, Context& context, const C& callback) {
+	return parse2(p.get(), context, TaggedCallback<T, C>(callback));
 }
 
 template <class C> Result parse2(const Error& p, Context& context, const C& callback) {
