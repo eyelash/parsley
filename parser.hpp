@@ -71,7 +71,7 @@ template <class P0, class... P> class Sequence<P0, P...> {
 public:
 	P0 head;
 	Sequence<P...> tail;
-	constexpr Sequence(P0 p0, P... p): head(p0), tail(p...) {}
+	constexpr Sequence(P0 head, P... tail): head(head), tail(tail...) {}
 	const P0& get(Index<0>) const {
 		return head;
 	}
@@ -90,7 +90,7 @@ template <class P0, class... P> class Choice<P0, P...> {
 public:
 	P0 head;
 	Choice<P...> tail;
-	constexpr Choice(P0 p0, P... p): head(p0), tail(p...) {}
+	constexpr Choice(P0 head, P... tail): head(head), tail(tail...) {}
 	const P0& get(Index<0>) const {
 		return head;
 	}
@@ -256,7 +256,7 @@ constexpr Error error(const StringView& s) {
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);
 }
-template <class T> constexpr auto reference() {
+template <class T> constexpr Reference_<T> reference() {
 	return Reference_<T>();
 }
 
@@ -380,8 +380,7 @@ enum Result: char {
 class IgnoreCallback {
 public:
 	constexpr IgnoreCallback() {}
-	template <class T> constexpr void push(const T&) const {}
-	template <class T> constexpr void operator ()(const T&) const {}
+	template <class... A> constexpr void push(A&&...) const {}
 };
 
 template <class F, class C> Result parse2(const Char<F>& p, Context& context, const C& callback) {
@@ -480,19 +479,19 @@ template <class T, class P, class C> Result parse2(const Cast<T, P>& p, Context&
 }
 
 template <class T> class CollectCallback {
-	T& builder;
+	T& collector;
 public:
-	CollectCallback(T& builder): builder(builder) {}
-	template <class A> void push(A&& a) const {
-		builder.push(std::forward<A>(a));
+	CollectCallback(T& collector): collector(collector) {}
+	template <class... A> void push(A&&... a) const {
+		collector.push(std::forward<A>(a)...);
 	}
 };
 
 template <class T, class P, class C> Result parse2(const Collect<T, P>& p, Context& context, const C& callback) {
-	T builder;
-	const Result result = parse2(p.get(), context, CollectCallback<T>(builder));
+	T collector;
+	const Result result = parse2(p.get(), context, CollectCallback<T>(collector));
 	if (result == MATCH) {
-		callback.push(builder.build());
+		collector.retrieve(callback);
 	}
 	return result;
 }

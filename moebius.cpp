@@ -18,22 +18,6 @@ static constexpr bool alphanumeric_char(char c) {
 }
 
 struct MoebiusParser {
-	static constexpr bool any_char(char c) {
-		return true;
-	}
-	static constexpr bool white_space_char(char c) {
-		return c == ' ' || c == '\t' || c == '\n' || c == '\r';
-	}
-	static constexpr bool numeric_char(char c) {
-		return c >= '0' && c <= '9';
-	}
-	static constexpr bool alphabetic_char(char c) {
-		return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
-	}
-	static constexpr bool alphanumeric_char(char c) {
-		return alphabetic_char(c) || numeric_char(c);
-	}
-
 	static constexpr auto comment = choice(
 		sequence("//", zero_or_more(sequence(not_("\n"), any_char))),
 		sequence("/*", zero_or_more(sequence(not_("*/"), any_char)), expect("*/"))
@@ -115,8 +99,8 @@ struct Numbers {
 		void push(Result r) {
 			number *= r.number;
 		}
-		Result build() {
-			return number;
+		template <class C> void retrieve(const C& callback) {
+			callback.push(Result(number));
 		}
 	};
 	struct Add {
@@ -124,8 +108,8 @@ struct Numbers {
 		void push(Result r) {
 			number += r.number;
 		}
-		Result build() {
-			return number;
+		template <class C> void retrieve(const C& callback) {
+			callback.push(Result(number));
 		}
 	};
 
