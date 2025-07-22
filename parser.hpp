@@ -244,6 +244,21 @@ template <class T> constexpr auto reference() {
 	return Reference_<T>();
 }
 
+class IgnoreCallback {
+public:
+	constexpr IgnoreCallback() {}
+	template <class... A> constexpr void push(A&&...) const {}
+};
+
+template <class T> class GetValueCallback {
+	T& value;
+public:
+	constexpr GetValueCallback(T& value): value(value) {}
+	template <class... A> void push(A&&... a) const {
+		value = T(std::forward<A>(a)...);
+	}
+};
+
 template <class F, class C> Result parse_impl(const Char<F>& p, Context& context, const C& callback) {
 	if (context && p.f(*context)) {
 		++context;
