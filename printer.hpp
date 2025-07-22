@@ -179,6 +179,15 @@ constexpr auto green = [](const auto& t) {
 constexpr auto yellow = [](const auto& t) {
 	return print_tuple("\x1B[33m", t, "\x1B[39m");
 };
+constexpr auto blue = [](const auto& t) {
+	return print_tuple("\x1B[34m", t, "\x1B[39m");
+};
+constexpr auto magenta = [](const auto& t) {
+	return print_tuple("\x1B[35m", t, "\x1B[39m");
+};
+constexpr auto cyan = [](const auto& t) {
+	return print_tuple("\x1B[36m", t, "\x1B[39m");
+};
 
 class NumberPrinter {
 	unsigned int n;
