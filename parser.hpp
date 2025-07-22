@@ -186,4 +186,54 @@ template <class T> constexpr auto reference() {
 	return Reference_<T>();
 }
 
+template <class F, class C> Result parse_impl(const Char<F>& p, Context& context, const C& callback) {
+	if (context && p.f(*context)) {
+		++context;
+		return SUCCESS;
+	}
+	return FAILURE;
+}
+
+template <class C> Result parse_impl(const String& p, Context& context, const C& callback) {
+	const SavePoint save_point = context.save();
+	for (char c: p.s) {
+		if (!(context && *context == c)) {
+			context.restore(save_point);
+			return FAILURE;
+		}
+		++context;
+	}
+	return SUCCESS;
+}
+
+template <class P, class C> Result parse_impl(const Repetition<P>& p, Context& context, const C& callback) {
+	while (true) {
+		Result result = parse_impl(p.p, context, callback);
+		if (result == ERROR) {
+			return ERROR;
+		}
+		if (result == FAILURE) {
+			break;
+		}
+	}
+	return SUCCESS;
+}
+
+template <class P, class C> Result parse_impl(const Not<P>& p, Context& context, const C& callback) {
+	const SavePoint save_point = context.save();
+	Result result = parse_impl(p.p, context, callback);
+	if (result == ERROR) {
+		return ERROR;
+	}
+	if (result == FAILURE) {
+		return SUCCESS;
+	}
+	context.restore(save_point);
+	return FAILURE;
+}
+
+template <class T, class C> Result parse_impl(const Reference_<T>& p, Context& context, const C& callback) {
+	return parse_impl(T::parser, context, callback);
+}
+
 }
