@@ -34,6 +34,11 @@ public:
 	}
 };
 
+template <class T> class Tag {
+public:
+	constexpr Tag() {}
+};
+
 template <class T> class Type {
 public:
 	constexpr Type() {}
