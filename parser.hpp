@@ -12,6 +12,8 @@ template <class U, class T0, class... T> struct ContainsType<U, T0, T...> {
 
 namespace parser {
 
+using SavePoint = const char*;
+
 class Context {
 	const SourceFile* file;
 	const char* position;
@@ -31,8 +33,14 @@ public:
 		++position;
 		return *this;
 	}
-	constexpr StringView operator -(const Context& start) const {
-		return StringView(start.position, position - start.position);
+	SavePoint save() const {
+		return position;
+	}
+	void restore(SavePoint save_point) {
+		position = save_point;
+	}
+	constexpr StringView operator -(SavePoint save_point) const {
+		return StringView(save_point, position - save_point);
 	}
 	const char* get_path() const {
 		return file->get_path();
@@ -112,10 +120,10 @@ class String {
 public:
 	constexpr String(const StringView& s): s(s) {}
 	BasicResult parse(Context& context) const {
-		const Context start = context;
+		const SavePoint save_point = context.save();
 		for (char c: s) {
 			if (!(context && *context == c)) {
-				context = start;
+				context.restore(save_point);
 				return Failure();
 			}
 			++context;
@@ -241,7 +249,7 @@ template <class P> class Not {
 public:
 	constexpr Not(P p): p(p) {}
 	BasicResult parse(Context& context) const {
-		const Context start = context;
+		const SavePoint save_point = context.save();
 		auto result = p.parse(context);
 		if (Error* error = result.get_error()) {
 			return std::move(*error);
@@ -249,7 +257,7 @@ public:
 		if (Failure* failure = result.get_failure()) {
 			return BasicResult();
 		}
-		context = start;
+		context.restore(save_point);
 		return Failure();
 	}
 };
@@ -259,7 +267,7 @@ template <class P> class Peek {
 public:
 	constexpr Peek(P p): p(p) {}
 	BasicResult parse(Context& context) const {
-		const Context start = context;
+		const SavePoint save_point = context.save();
 		auto result = p.parse(context);
 		if (Error* error = result.get_error()) {
 			return std::move(*error);
@@ -267,7 +275,7 @@ public:
 		if (Failure* failure = result.get_failure()) {
 			return Failure();
 		}
-		context = start;
+		context.restore(save_point);
 		return BasicResult();
 	}
 };
@@ -279,7 +287,7 @@ public:
 	constexpr Map(P p): p(p) {}
 	Result<R> parse(Context& context) const {
 		if constexpr (is_basic<P>::value) {
-			const Context start = context;
+			const SavePoint start = context.save();
 			auto result = p.parse(context);
 			if (Error* error = result.get_error()) {
 				return std::move(*error);
