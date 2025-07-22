@@ -65,16 +65,28 @@ public:
 	constexpr String(const StringView& s): s(s) {}
 };
 
-template <class... P> class Sequence {
+template <class... P> class Sequence;
+template <> class Sequence<> {
 public:
-	Tuple<P...> p;
-	constexpr Sequence(P... p): p(p...) {}
+	constexpr Sequence() {}
+};
+template <class P0, class... P> class Sequence<P0, P...> {
+public:
+	P0 head;
+	Sequence<P...> tail;
+	constexpr Sequence(P0 head, P... tail): head(head), tail(tail...) {}
 };
 
-template <class... P> class Choice {
+template <class... P> class Choice;
+template <> class Choice<> {
 public:
-	Tuple<P...> p;
-	constexpr Choice(P... p): p(p...) {}
+	constexpr Choice() {}
+};
+template <class P0, class... P> class Choice<P0, P...> {
+public:
+	P0 head;
+	Choice<P...> tail;
+	constexpr Choice(P0 head, P... tail): head(head), tail(tail...) {}
 };
 
 template <class P> class Repetition {
@@ -150,11 +162,17 @@ constexpr auto range(char first, char last) {
 		return c >= first && c <= last;
 	});
 }
+template <class... P> constexpr Sequence<P...> sequence_(P... p) {
+	return Sequence<P...>(p...);
+}
 template <class... P> constexpr auto sequence(P... p) {
-	return Sequence(get_parser(p)...);
+	return sequence_(get_parser(p)...);
+}
+template <class... P> constexpr Choice<P...> choice_(P... p) {
+	return Choice<P...>(p...);
 }
 template <class... P> constexpr auto choice(P... p) {
-	return Choice(get_parser(p)...);
+	return choice_(get_parser(p)...);
 }
 template <class P> constexpr auto repetition(P p) {
 	return Repetition(get_parser(p));
@@ -209,6 +227,34 @@ template <class C> Result parse_impl(const String& p, Context& context, const C&
 			return FAILURE;
 		}
 		++context;
+	}
+	return SUCCESS;
+}
+
+template <class C> Result parse_impl(const Sequence<>& p, Context& context, const C& callback) {
+	return SUCCESS;
+}
+template <class P0, class... P, class C> Result parse_impl(const Sequence<P0, P...>& p, Context& context, const C& callback) {
+	Result result = parse_impl(p.head, context, callback);
+	if (result == ERROR) {
+		return ERROR;
+	}
+	if (result == FAILURE) {
+		return FAILURE;
+	}
+	return parse_impl(p.tail, context, callback);
+}
+
+template <class C> Result parse_impl(const Choice<>& p, Context& context, const C& callback) {
+	return FAILURE;
+}
+template <class P0, class... P, class C> Result parse_impl(const Choice<P0, P...>& p, Context& context, const C& callback) {
+	Result result = parse_impl(p.head, context, callback);
+	if (result == ERROR) {
+		return ERROR;
+	}
+	if (result == FAILURE) {
+		return parse_impl(p.tail, context, callback);
 	}
 	return SUCCESS;
 }
