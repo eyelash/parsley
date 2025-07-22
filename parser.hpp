@@ -107,6 +107,12 @@ public:
 	constexpr Peek(P p): p(p) {}
 };
 
+template <class P> class ToString {
+public:
+	P p;
+	constexpr ToString(P p): p(p) {}
+};
+
 template <class P, auto F> class Map;
 template <class P, class R, class A, R (*F)(A)> class Map<P, F> {
 public:
@@ -194,6 +200,9 @@ template <class P> constexpr auto not_(P p) {
 }
 template <class P> constexpr auto peek(P p) {
 	return Peek(get_parser(p));
+}
+template <class P> constexpr auto to_string(P p) {
+	return ToString(get_parser(p));
 }
 template <auto F, class P> constexpr Map<P, F> map_(P p) {
 	return Map<P, F>(p);
@@ -299,6 +308,18 @@ template <class P, class C> Result parse_impl(const Not<P>& p, Context& context,
 	}
 	context.restore(save_point);
 	return FAILURE;
+}
+
+template <class P, class C> Result parse_impl(const ToString<P>& p, Context& context, const C& callback) {
+	const SavePoint save_point = context.save();
+	const Result result = parse_impl(p.p, context, callback);
+	if (result == ERROR) {
+		return ERROR;
+	}
+	if (result == SUCCESS) {
+		callback.push(context - save_point);
+	}
+	return result;
 }
 
 template <class T> class CollectCallback {
