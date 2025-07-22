@@ -114,6 +114,12 @@ public:
 	constexpr Map(P p): p(p) {}
 };
 
+template <class T, class P> class Collect {
+public:
+	P p;
+	constexpr Collect(P p): p(p) {}
+};
+
 class Error_ {
 public:
 	StringView s;
@@ -194,6 +200,12 @@ template <auto F, class P> constexpr Map<P, F> map_(P p) {
 }
 template <auto F, class P> constexpr auto map(P p) {
 	return map_<F>(get_parser(p));
+}
+template <class T, class P> constexpr Collect<T, P> collect_(P p) {
+	return Collect<T, P>(p);
+}
+template <class T, class P> constexpr auto collect(P p) {
+	return collect_<T>(get_parser(p));
 }
 constexpr Error_ error(const StringView& s) {
 	return Error_(s);
@@ -287,6 +299,27 @@ template <class P, class C> Result parse_impl(const Not<P>& p, Context& context,
 	}
 	context.restore(save_point);
 	return FAILURE;
+}
+
+template <class T> class CollectCallback {
+	T& collector;
+public:
+	constexpr CollectCallback(T& collector): collector(collector) {}
+	template <class... A> void push(A&&... a) const {
+		collector.push(std::forward<A>(a)...);
+	}
+};
+
+template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, Context& context, const C& callback) {
+	T collector;
+	const Result result = parse_impl(p.p, context, CollectCallback<T>(collector));
+	if (result == ERROR) {
+		return ERROR;
+	}
+	if (result == SUCCESS) {
+		collector.retrieve(callback);
+	}
+	return result;
 }
 
 template <class C> Result parse_impl(const Error_& p, Context& context, const C& callback) {
