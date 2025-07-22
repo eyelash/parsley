@@ -231,18 +231,22 @@ template <class C> Result parse_impl(const String& p, Context& context, const C&
 	return SUCCESS;
 }
 
-template <class C> Result parse_impl(const Sequence<>& p, Context& context, const C& callback) {
+template <class C> Result parse_impl(const Sequence<>& p, Context& context, const C& callback, const SavePoint& save_point) {
 	return SUCCESS;
 }
-template <class P0, class... P, class C> Result parse_impl(const Sequence<P0, P...>& p, Context& context, const C& callback) {
+template <class P0, class... P, class C> Result parse_impl(const Sequence<P0, P...>& p, Context& context, const C& callback, const SavePoint& save_point) {
 	Result result = parse_impl(p.head, context, callback);
 	if (result == ERROR) {
 		return ERROR;
 	}
 	if (result == FAILURE) {
+		context.restore(save_point);
 		return FAILURE;
 	}
 	return parse_impl(p.tail, context, callback);
+}
+template <class... P, class C> Result parse_impl(const Sequence<P...>& p, Context& context, const C& callback) {
+	return parse_impl(p, context, callback, context.save());
 }
 
 template <class C> Result parse_impl(const Choice<>& p, Context& context, const C& callback) {
