@@ -10,9 +10,10 @@ using SavePoint = const char*;
 class Context {
 	const SourceFile* file;
 	const char* position;
+	std::string error;
 public:
 	Context(const SourceFile* file): file(file), position(file->begin()) {}
-	constexpr Context(const SourceFile* file, const char* position): file(file), position(position) {}
+	Context(const SourceFile* file, const char* position): file(file), position(position) {}
 	operator bool() const {
 		return position < file->end();
 	}
@@ -22,6 +23,12 @@ public:
 	Context& operator ++() {
 		++position;
 		return *this;
+	}
+	template <class P> void set_error(P&& p) {
+		error = print_to_string(std::forward<P>(p));
+	}
+	const std::string& get_error() const {
+		return error;
 	}
 	SavePoint save() const {
 		return position;
@@ -230,6 +237,23 @@ template <class P, class C> Result parse_impl(const Not<P>& p, Context& context,
 	}
 	context.restore(save_point);
 	return FAILURE;
+}
+
+template <class C> Result parse_impl(const Error_& p, Context& context, const C& callback) {
+	context.set_error(p.s);
+	return ERROR;
+}
+
+template <class C> Result parse_impl(const Expect& p, Context& context, const C& callback) {
+	Result result = parse_impl(String(p.s), context, callback);
+	if (result == ERROR) {
+		return ERROR;
+	}
+	if (result == FAILURE) {
+		context.set_error(printer::format("expected \"%\"", p.s));
+		return ERROR;
+	}
+	return SUCCESS;
 }
 
 template <class T, class C> Result parse_impl(const Reference_<T>& p, Context& context, const C& callback) {
