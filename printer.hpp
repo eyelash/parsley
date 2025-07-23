@@ -94,10 +94,10 @@ template <class P> class Indent {
 	P p;
 public:
 	constexpr Indent(P p): p(p) {}
-	void print(Context& c) const {
-		c.increase_indentation();
-		p.print(c);
-		c.decrease_indentation();
+	void print(Context& context) const {
+		context.increase_indentation();
+		p.print(context);
+		context.decrease_indentation();
 	}
 };
 template <class P> constexpr auto indented(P&& p) {

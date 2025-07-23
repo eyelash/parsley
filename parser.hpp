@@ -259,6 +259,24 @@ public:
 	}
 };
 
+template <class T> class CollectCallback {
+	T& collector;
+public:
+	constexpr CollectCallback(T& collector): collector(collector) {}
+	template <class... A> void push(A&&... a) const {
+		collector.push(std::forward<A>(a)...);
+	}
+};
+
+template <class T, class C> class TaggedCallback {
+	const C& callback;
+public:
+	TaggedCallback(const C& callback): callback(callback) {}
+	template <class... A> void push(A&&... a) const {
+		callback.push(std::forward<A>(a)..., Tag<T>());
+	}
+};
+
 template <class F, class C> Result parse_impl(const Char<F>& p, Context& context, const C& callback) {
 	if (context && p.f(*context)) {
 		++context;
@@ -283,7 +301,7 @@ template <class C> Result parse_impl(const Sequence<>& p, Context& context, cons
 	return SUCCESS;
 }
 template <class P0, class... P, class C> Result parse_impl(const Sequence<P0, P...>& p, Context& context, const C& callback, const SavePoint& save_point) {
-	Result result = parse_impl(p.head, context, callback);
+	const Result result = parse_impl(p.head, context, callback);
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -301,7 +319,7 @@ template <class C> Result parse_impl(const Choice<>& p, Context& context, const 
 	return FAILURE;
 }
 template <class P0, class... P, class C> Result parse_impl(const Choice<P0, P...>& p, Context& context, const C& callback) {
-	Result result = parse_impl(p.head, context, callback);
+	const Result result = parse_impl(p.head, context, callback);
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -313,7 +331,7 @@ template <class P0, class... P, class C> Result parse_impl(const Choice<P0, P...
 
 template <class P, class C> Result parse_impl(const Repetition<P>& p, Context& context, const C& callback) {
 	while (true) {
-		Result result = parse_impl(p.p, context, callback);
+		const Result result = parse_impl(p.p, context, callback);
 		if (result == ERROR) {
 			return ERROR;
 		}
@@ -326,7 +344,7 @@ template <class P, class C> Result parse_impl(const Repetition<P>& p, Context& c
 
 template <class P, class C> Result parse_impl(const Not<P>& p, Context& context, const C& callback) {
 	const SavePoint save_point = context.save();
-	Result result = parse_impl(p.p, context, callback);
+	const Result result = parse_impl(p.p, context, callback);
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -349,15 +367,6 @@ template <class P, class C> Result parse_impl(const ToString<P>& p, Context& con
 	return result;
 }
 
-template <class T> class CollectCallback {
-	T& collector;
-public:
-	constexpr CollectCallback(T& collector): collector(collector) {}
-	template <class... A> void push(A&&... a) const {
-		collector.push(std::forward<A>(a)...);
-	}
-};
-
 template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, Context& context, const C& callback) {
 	T collector;
 	const Result result = parse_impl(p.p, context, CollectCallback<T>(collector));
@@ -370,15 +379,6 @@ template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, C
 	return result;
 }
 
-template <class T, class C> class TaggedCallback {
-	const C& callback;
-public:
-	TaggedCallback(const C& callback): callback(callback) {}
-	template <class... A> void push(A&&... a) const {
-		callback.push(std::forward<A>(a)..., Tag<T>());
-	}
-};
-
 template <class T, class P, class C> Result parse_impl(const Tagged<T, P>& p, Context& context, const C& callback) {
 	return parse_impl(p.p, context, TaggedCallback<T, C>(callback));
 }
@@ -389,7 +389,7 @@ template <class C> Result parse_impl(const Error_& p, Context& context, const C&
 }
 
 template <class C> Result parse_impl(const Expect& p, Context& context, const C& callback) {
-	Result result = parse_impl(String(p.s), context, callback);
+	const Result result = parse_impl(String(p.s), context, callback);
 	if (result == ERROR) {
 		return ERROR;
 	}
