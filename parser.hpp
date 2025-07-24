@@ -101,12 +101,6 @@ public:
 	constexpr Not(P p): p(p) {}
 };
 
-template <class P> class Peek {
-public:
-	P p;
-	constexpr Peek(P p): p(p) {}
-};
-
 template <class P> class ToString {
 public:
 	P p;
@@ -215,8 +209,8 @@ template <class P> constexpr auto optional(P p) {
 template <class P> constexpr auto not_(P p) {
 	return Not(get_parser(p));
 }
-template <class P> constexpr auto peek(P p) {
-	return Peek(get_parser(p));
+template <class P> constexpr auto and_(P p) {
+	return not_(not_(p));
 }
 constexpr auto end() {
 	return not_(any_char());
