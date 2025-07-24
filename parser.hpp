@@ -8,14 +8,17 @@ namespace parser {
 using SavePoint = const char*;
 
 class Context {
-	const SourceFile* file;
 	const char* position;
+	const char* end;
+	const char* begin;
 	std::string error;
 public:
-	Context(const SourceFile* file): file(file), position(file->begin()) {}
-	Context(const SourceFile* file, const char* position): file(file), position(position) {}
-	operator bool() const {
-		return position < file->end();
+	Context(const StringView& s): position(s.begin()), end(s.end()), begin(s.begin()) {}
+	Context(const char* s): Context(StringView(s)) {}
+	Context(const std::vector<char>& v): Context(StringView(v.data(), v.size())) {}
+	Context(const SourceFile* file): Context(StringView(file->data(), file->size())) {}
+	explicit constexpr operator bool() const {
+		return position < end;
 	}
 	constexpr char operator *() const {
 		return *position;
@@ -39,11 +42,8 @@ public:
 	constexpr StringView operator -(SavePoint save_point) const {
 		return StringView(save_point, position - save_point);
 	}
-	const char* get_path() const {
-		return file->get_path();
-	}
-	std::size_t get_position() const {
-		return position - file->begin();
+	constexpr std::size_t get_position() const {
+		return position - begin;
 	}
 };
 

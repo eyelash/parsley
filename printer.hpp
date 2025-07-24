@@ -287,15 +287,10 @@ template <class P, class C> void print_message(Context& context, const C& color,
 	p.print(context);
 	context.print('\n');
 }
-template <class P, class C> void print_message(Context& context, const char* path, std::size_t source_position, const C& color, const char* severity, const P& p) {
-	if (path == nullptr) {
-		print_message(context, color, severity, p);
-		return;
-	}
-	SourceFile file(path);
+template <class P, class C> void print_message(Context& context, const char* path, const StringView& source, std::size_t source_position, const C& color, const char* severity, const P& p) {
 	unsigned int line_number = 1;
-	const char* c = file.begin();
-	const char* end = file.end();
+	const char* c = source.begin();
+	const char* end = source.end();
 	const char* position = std::min(c + source_position, end);
 	const char* line_start = c;
 	while (c < position) {
@@ -336,7 +331,12 @@ template <class P, class C> void print_message(Context& context, const char* pat
 }
 inline void print_error(const char* path, std::size_t source_position, const std::string& message) {
 	Context context(std::cerr);
-	print_message(context, path, source_position, red, "error", get_printer(message));
+	if (path == nullptr) {
+		print_message(context, red, "error", get_printer(message));
+		return;
+	}
+	SourceFile file(path);
+	print_message(context, path, StringView(file.data(), file.size()), source_position, red, "error", get_printer(message));
 }
 
 }
