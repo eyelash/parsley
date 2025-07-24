@@ -175,6 +175,11 @@ template <class P> constexpr std::enable_if_t<!is_char_class<P>::value, P> get_p
 template <class F> constexpr std::enable_if_t<is_char_class<F>::value, Char<F>> get_parser(F f) {
 	return Char(f);
 }
+constexpr auto any_char() {
+	return Char([](char c) {
+		return true;
+	});
+}
 constexpr auto range(char first, char last) {
 	return Char([first, last](char c) {
 		return c >= first && c <= last;
@@ -192,6 +197,9 @@ template <class... P> constexpr Choice<P...> choice_(P... p) {
 template <class... P> constexpr auto choice(P... p) {
 	return choice_(get_parser(p)...);
 }
+constexpr auto empty() {
+	return sequence();
+}
 template <class P> constexpr auto repetition(P p) {
 	return Repetition(get_parser(p));
 }
@@ -201,11 +209,17 @@ template <class P> constexpr auto zero_or_more(P p) {
 template <class P> constexpr auto one_or_more(P p) {
 	return sequence(p, repetition(p));
 }
+template <class P> constexpr auto optional(P p) {
+	return choice(p, empty());
+}
 template <class P> constexpr auto not_(P p) {
 	return Not(get_parser(p));
 }
 template <class P> constexpr auto peek(P p) {
 	return Peek(get_parser(p));
+}
+constexpr auto end() {
+	return not_(any_char());
 }
 template <class P> constexpr auto to_string(P p) {
 	return ToString(get_parser(p));
