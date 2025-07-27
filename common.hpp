@@ -5,7 +5,6 @@
 #include <type_traits>
 #include <utility>
 #include <string>
-#include <new>
 #include <fstream>
 #include <vector>
 #include <iterator>
