@@ -36,23 +36,15 @@ public:
 };
 
 class Char {
-	char c;
 public:
+	char c;
 	constexpr Char(char c): c(c) {}
-	void print(Context& context) const {
-		context.print(c);
-	}
 };
 
 class String {
-	StringView s;
 public:
+	StringView s;
 	constexpr String(const StringView& s): s(s) {}
-	void print(Context& context) const {
-		for (char c: s) {
-			context.print(c);
-		}
-	}
 };
 
 template <class P, class = void> struct is_printer: std::false_type {};
@@ -72,6 +64,16 @@ String get_printer(const std::string& s) {
 }
 template <class P> constexpr std::enable_if_t<is_printer<P>::value, P> get_printer(P p) {
 	return p;
+}
+
+inline void print_impl(const Char& p, Context& context) {
+	context.print(p.c);
+}
+
+inline void print_impl(const String& p, Context& context) {
+	for (char c: p.s) {
+		context.print(c);
+	}
 }
 
 template <class P> std::enable_if_t<is_printer<P>::value> print_impl(const P& p, Context& context) {
