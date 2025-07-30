@@ -56,7 +56,7 @@ public:
 };
 
 template <class P, class = void> struct is_printer: std::false_type {};
-template <class P> struct is_printer<P, decltype(std::declval<P>().print(std::declval<Context&>()))>: std::true_type {};
+template <class P> struct is_printer<P, decltype(std::declval<const P&>().print(std::declval<Context&>()))>: std::true_type {};
 
 constexpr Char get_printer(char c) {
 	return Char(c);
@@ -74,12 +74,16 @@ template <class P> constexpr std::enable_if_t<is_printer<P>::value, P> get_print
 	return p;
 }
 
+template <class P> std::enable_if_t<is_printer<P>::value> print_impl(const P& p, Context& context) {
+	p.print(context);
+}
+
 template <class P> class Ln {
 	P p;
 public:
 	constexpr Ln(P p): p(p) {}
 	void print(Context& context) const {
-		p.print(context);
+		print_impl(p, context);
 		context.print('\n');
 	}
 };
@@ -96,7 +100,7 @@ public:
 	constexpr Indent(P p): p(p) {}
 	void print(Context& context) const {
 		context.increase_indentation();
-		p.print(context);
+		print_impl(p, context);
 		context.decrease_indentation();
 	}
 };
@@ -122,7 +126,7 @@ public:
 	constexpr PrintTuple() {}
 	void print(Context& context) const {}
 	void print_formatted(Context& context, const char* s) const {
-		get_printer(s).print(context);
+		print_impl(get_printer(s), context);
 	}
 };
 template <class T0, class... T> class PrintTuple<T0, T...> {
@@ -131,7 +135,7 @@ template <class T0, class... T> class PrintTuple<T0, T...> {
 public:
 	constexpr PrintTuple(T0 t0, T... t): t0(t0), t(t...) {}
 	void print(Context& context) const {
-		t0.print(context);
+		print_impl(t0, context);
 		t.print(context);
 	}
 	void print_formatted(Context& context, const char* s) const {
@@ -139,7 +143,7 @@ public:
 			if (*s == '%') {
 				++s;
 				if (*s != '%') {
-					t0.print(context);
+					print_impl(t0, context);
 					t.print_formatted(context, s);
 					return;
 				}
@@ -256,7 +260,7 @@ public:
 	constexpr Repeat(P p, unsigned int count): p(p), count(count) {}
 	void print(Context& context) const {
 		for (unsigned int i = 0; i < count; ++i) {
-			p.print(context);
+			print_impl(p, context);
 		}
 	}
 };
@@ -270,9 +274,9 @@ class Plural {
 public:
 	constexpr Plural(const char* word, unsigned int count): word(word), count(count) {}
 	void print(Context& context) const {
-		print_number(count).print(context);
+		print_impl(print_number(count), context);
 		context.print(' ');
-		get_printer(word).print(context);
+		print_impl(get_printer(word), context);
 		if (count != 1) {
 			context.print('s');
 		}
@@ -283,8 +287,8 @@ constexpr Plural print_plural(const char* word, unsigned int count) {
 }
 
 template <class P, class C> void print_message(Context& context, const C& color, const char* severity, const P& p) {
-	bold(color(format("%: ", severity))).print(context);
-	p.print(context);
+	print_impl(bold(color(format("%: ", severity))), context);
+	print_impl(p, context);
 	context.print('\n');
 }
 template <class P, class C> void print_message(Context& context, const char* path, const StringView& source, std::size_t source_position, const C& color, const char* severity, const P& p) {
@@ -308,11 +312,11 @@ template <class P, class C> void print_message(Context& context, const char* pat
 
 	print_message(context, color, severity, p);
 
-	ln(format(" %--> %:%:%:", repeat(' ', line_number_width), path, print_number(line_number), print_number(column))).print(context);
+	print_impl(ln(format(" %--> %:%:%:", repeat(' ', line_number_width), path, print_number(line_number), print_number(column))), context);
 
-	ln(format(" % |", repeat(' ', line_number_width))).print(context);
+	print_impl(ln(format(" % |", repeat(' ', line_number_width))), context);
 
-	format(" % | ", print_number(line_number)).print(context);
+	print_impl(format(" % | ", print_number(line_number)), context);
 	c = line_start;
 	while (c < end && *c != '\n') {
 		context.print(*c);
@@ -320,13 +324,13 @@ template <class P, class C> void print_message(Context& context, const char* pat
 	}
 	context.print('\n');
 
-	format(" % | ", repeat(' ', line_number_width)).print(context);
+	print_impl(format(" % | ", repeat(' ', line_number_width)), context);
 	c = line_start;
 	while (c < position) {
 		context.print(*c == '\t' ? '\t' : ' ');
 		++c;
 	}
-	bold(color('^')).print(context);
+	print_impl(bold(color('^')), context);
 	context.print('\n');
 }
 inline void print_error(const char* path, std::size_t source_position, const std::string& message) {
@@ -343,7 +347,7 @@ inline void print_error(const char* path, std::size_t source_position, const std
 
 template <class P> void print(std::ostream& ostream, P&& p) {
 	printer::Context context(ostream);
-	printer::get_printer(std::forward<P>(p)).print(context);
+	printer::print_impl(printer::get_printer(std::forward<P>(p)), context);
 }
 template <class P> void print(P&& p) {
 	print(std::cout, std::forward<P>(p));
