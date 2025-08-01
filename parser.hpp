@@ -137,12 +137,6 @@ public:
 	constexpr Expect(const StringView& s): s(s) {}
 };
 
-template <class P, class R> class Cast {
-public:
-	P p;
-	constexpr Cast(P p): p(p) {}
-};
-
 template <class T> class Reference_ {
 public:
 	constexpr Reference_() {}
@@ -240,12 +234,6 @@ constexpr Error_ error(const StringView& s) {
 }
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);
-}
-template <class R, class P> constexpr Cast<P, R> cast_(P p) {
-	return Cast<P, R>(p);
-}
-template <class R, class P> constexpr auto cast(P p) {
-	return cast_<R>(get_parser(p));
 }
 template <class T> constexpr auto reference() {
 	return Reference_<T>();
