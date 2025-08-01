@@ -107,8 +107,7 @@ public:
 	constexpr ToString(P p): p(p) {}
 };
 
-template <class P, auto F> class Map;
-template <class P, class R, class A, R (*F)(A)> class Map<P, F> {
+template <class T, class P> class Map {
 public:
 	P p;
 	constexpr Map(P p): p(p) {}
@@ -218,11 +217,11 @@ constexpr auto end() {
 template <class P> constexpr auto to_string(P p) {
 	return ToString(get_parser(p));
 }
-template <auto F, class P> constexpr Map<P, F> map_(P p) {
-	return Map<P, F>(p);
+template <class T, class P> constexpr Map<T, P> map_(P p) {
+	return Map<T, P>(p);
 }
-template <auto F, class P> constexpr auto map(P p) {
-	return map_<F>(get_parser(p));
+template <class T, class P> constexpr auto map(P p) {
+	return map_<T>(get_parser(p));
 }
 template <class T, class P> constexpr Collect<T, P> collect_(P p) {
 	return Collect<T, P>(p);
@@ -264,6 +263,15 @@ public:
 	constexpr GetValueCallback(T& value): value(value) {}
 	template <class... A> void push(A&&... a) const {
 		value = T(std::forward<A>(a)...);
+	}
+};
+
+template <class T, class C> class MapCallback {
+	const C& callback;
+public:
+	MapCallback(const C& callback): callback(callback) {}
+	template <class... A> void push(A&&... a) const {
+		T::map(callback, std::forward<A>(a)...);
 	}
 };
 
@@ -373,6 +381,10 @@ template <class P, class C> Result parse_impl(const ToString<P>& p, Context& con
 		callback.push(context - save_point);
 	}
 	return result;
+}
+
+template <class T, class P, class C> Result parse_impl(const Map<T, P>& p, Context& context, const C& callback) {
+	return parse_impl(p.p, context, MapCallback<T, C>(callback));
 }
 
 template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, Context& context, const C& callback) {
