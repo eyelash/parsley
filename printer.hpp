@@ -344,6 +344,14 @@ inline void print_error(const char* path, std::size_t source_position, const std
 	SourceFile file(path);
 	print_message(context, path, StringView(file.data(), file.size()), source_position, red, "error", get_printer(message));
 }
+inline void print_error(const char* path, const StringView& source, std::size_t source_position, const std::string& message) {
+	Context context(std::cerr);
+	print_message(context, path, source, source_position, red, "error", get_printer(message));
+}
+inline void print_warning(const char* path, const StringView& source, std::size_t source_position, const std::string& message) {
+	Context context(std::cerr);
+	print_message(context, path, source, source_position, yellow, "warning", get_printer(message));
+}
 
 }
 
