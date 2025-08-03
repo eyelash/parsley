@@ -65,6 +65,33 @@ public:
 	constexpr String(const StringView& s): s(s) {}
 };
 
+class Char {
+public:
+	char c;
+	constexpr Char(char c): c(c) {}
+	constexpr bool operator ()(char c2) const {
+		return c2 == c;
+	}
+};
+
+class AnyChar {
+public:
+	constexpr AnyChar() {}
+	constexpr bool operator ()(char c) const {
+		return true;
+	}
+};
+
+class CharRange {
+public:
+	char first;
+	char last;
+	constexpr CharRange(char first, char last): first(first), last(last) {}
+	constexpr bool operator ()(char c) const {
+		return c >= first && c <= last;
+	}
+};
+
 template <class... P> class Sequence;
 template <> class Sequence<> {
 public:
@@ -151,10 +178,8 @@ public:
 template <class F, class = bool> struct is_char_class: std::false_type {};
 template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declval<char>()))>: std::true_type {};
 
-constexpr auto get_parser(char c) {
-	return CharClass([c](char c2) {
-		return c == c2;
-	});
+constexpr CharClass<Char> get_parser(char c) {
+	return CharClass<Char>(Char(c));
 }
 constexpr String get_parser(const StringView& s) {
 	return String(s);
@@ -168,15 +193,12 @@ template <class P> constexpr std::enable_if_t<!is_char_class<P>::value, P> get_p
 template <class F> constexpr std::enable_if_t<is_char_class<F>::value, CharClass<F>> get_parser(F f) {
 	return CharClass<F>(f);
 }
-constexpr auto any_char() {
-	return CharClass([](char c) {
-		return true;
-	});
+
+constexpr CharClass<AnyChar> any_char() {
+	return CharClass<AnyChar>(AnyChar());
 }
-constexpr auto range(char first, char last) {
-	return CharClass([first, last](char c) {
-		return c >= first && c <= last;
-	});
+constexpr CharClass<CharRange> range(char first, char last) {
+	return CharClass<CharRange>(CharRange(first, last));
 }
 template <class... P> constexpr Sequence<P...> sequence_(P... p) {
 	return Sequence<P...>(p...);
