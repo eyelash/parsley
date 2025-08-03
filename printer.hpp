@@ -35,17 +35,11 @@ public:
 	}
 };
 
-class Char {
-public:
-	char c;
-	constexpr Char(char c): c(c) {}
-};
-
 template <class P, class = void> struct is_printer: std::false_type {};
 template <class P> struct is_printer<P, decltype(std::declval<const P&>().print(std::declval<Context&>()))>: std::true_type {};
 
-constexpr Char get_printer(char c) {
-	return Char(c);
+constexpr char get_printer(char c) {
+	return c;
 }
 constexpr StringView get_printer(const StringView& s) {
 	return StringView(s);
@@ -60,8 +54,8 @@ template <class P> constexpr std::enable_if_t<is_printer<P>::value, P> get_print
 	return p;
 }
 
-inline void print_impl(const Char& p, Context& context) {
-	context.print(p.c);
+inline void print_impl(char c, Context& context) {
+	context.print(c);
 }
 
 inline void print_impl(const StringView& s, Context& context) {
@@ -86,8 +80,8 @@ public:
 template <class P> constexpr auto ln(P&& p) {
 	return Ln(get_printer(std::forward<P>(p)));
 }
-constexpr Char ln() {
-	return Char('\n');
+constexpr char ln() {
+	return '\n';
 }
 
 template <class P> class Indent {
