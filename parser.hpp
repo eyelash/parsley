@@ -42,6 +42,9 @@ public:
 	constexpr StringView operator -(SavePoint save_point) const {
 		return StringView(save_point, position - save_point);
 	}
+	constexpr StringView get_source() const {
+		return StringView(begin, end - begin);
+	}
 	constexpr std::size_t get_position() const {
 		return position - begin;
 	}
