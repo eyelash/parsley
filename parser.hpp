@@ -101,6 +101,12 @@ public:
 	constexpr Not(P p): p(p) {}
 };
 
+template <class P> class Ignore {
+public:
+	P p;
+	constexpr Ignore(P p): p(p) {}
+};
+
 template <class P> class ToString {
 public:
 	P p;
@@ -207,6 +213,9 @@ template <class P> constexpr auto and_(P p) {
 }
 constexpr auto end() {
 	return not_(any_char());
+}
+template <class P> constexpr auto ignore(P p) {
+	return Ignore(get_parser(p));
 }
 template <class P> constexpr auto to_string(P p) {
 	return ToString(get_parser(p));
@@ -357,6 +366,10 @@ template <class P, class C> Result parse_impl(const Not<P>& p, Context& context,
 	}
 	context.restore(save_point);
 	return FAILURE;
+}
+
+template <class P, class C> Result parse_impl(const Ignore<P>& p, Context& context, const C& callback) {
+	return parse_impl(p.p, context, IgnoreCallback());
 }
 
 template <class P, class C> Result parse_impl(const ToString<P>& p, Context& context, const C& callback) {
