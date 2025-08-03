@@ -59,12 +59,6 @@ public:
 	constexpr CharClass(F f): f(f) {}
 };
 
-class String {
-public:
-	StringView s;
-	constexpr String(const StringView& s): s(s) {}
-};
-
 class Char {
 public:
 	char c;
@@ -181,11 +175,11 @@ template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declv
 constexpr CharClass<Char> get_parser(char c) {
 	return CharClass<Char>(Char(c));
 }
-constexpr String get_parser(const StringView& s) {
-	return String(s);
+constexpr StringView get_parser(const StringView& s) {
+	return StringView(s);
 }
-constexpr String get_parser(const char* s) {
-	return String(s);
+constexpr StringView get_parser(const char* s) {
+	return StringView(s);
 }
 template <class P> constexpr std::enable_if_t<!is_char_class<P>::value, P> get_parser(P p) {
 	return p;
@@ -320,9 +314,9 @@ template <class F, class C> Result parse_impl(const CharClass<F>& p, Context& co
 	return FAILURE;
 }
 
-template <class C> Result parse_impl(const String& p, Context& context, const C& callback) {
+template <class C> Result parse_impl(const StringView& s, Context& context, const C& callback) {
 	const SavePoint save_point = context.save();
-	for (char c: p.s) {
+	for (char c: s) {
 		if (!(context && *context == c)) {
 			context.restore(save_point);
 			return FAILURE;
@@ -432,7 +426,7 @@ template <class C> Result parse_impl(const Error_& p, Context& context, const C&
 }
 
 template <class C> Result parse_impl(const Expect& p, Context& context, const C& callback) {
-	const Result result = parse_impl(String(p.s), context, callback);
+	const Result result = parse_impl(get_parser(p.s), context, callback);
 	if (result == ERROR) {
 		return ERROR;
 	}

@@ -41,26 +41,20 @@ public:
 	constexpr Char(char c): c(c) {}
 };
 
-class String {
-public:
-	StringView s;
-	constexpr String(const StringView& s): s(s) {}
-};
-
 template <class P, class = void> struct is_printer: std::false_type {};
 template <class P> struct is_printer<P, decltype(std::declval<const P&>().print(std::declval<Context&>()))>: std::true_type {};
 
 constexpr Char get_printer(char c) {
 	return Char(c);
 }
-constexpr String get_printer(const StringView& s) {
-	return String(s);
+constexpr StringView get_printer(const StringView& s) {
+	return StringView(s);
 }
-constexpr String get_printer(const char* s) {
-	return String(s);
+constexpr StringView get_printer(const char* s) {
+	return StringView(s);
 }
-String get_printer(const std::string& s) {
-	return String(StringView(s.data(), s.size()));
+StringView get_printer(const std::string& s) {
+	return StringView(s.data(), s.size());
 }
 template <class P> constexpr std::enable_if_t<is_printer<P>::value, P> get_printer(P p) {
 	return p;
@@ -70,8 +64,8 @@ inline void print_impl(const Char& p, Context& context) {
 	context.print(p.c);
 }
 
-inline void print_impl(const String& p, Context& context) {
-	for (char c: p.s) {
+inline void print_impl(const StringView& s, Context& context) {
+	for (char c: s) {
 		context.print(c);
 	}
 }
