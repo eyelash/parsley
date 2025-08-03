@@ -53,10 +53,10 @@ enum Result: char {
 	ERROR
 };
 
-template <class F> class Char {
+template <class F> class CharClass {
 public:
 	F f;
-	constexpr Char(F f): f(f) {}
+	constexpr CharClass(F f): f(f) {}
 };
 
 class String {
@@ -152,7 +152,7 @@ template <class F, class = bool> struct is_char_class: std::false_type {};
 template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declval<char>()))>: std::true_type {};
 
 constexpr auto get_parser(char c) {
-	return Char([c](char c2) {
+	return CharClass([c](char c2) {
 		return c == c2;
 	});
 }
@@ -165,16 +165,16 @@ constexpr String get_parser(const char* s) {
 template <class P> constexpr std::enable_if_t<!is_char_class<P>::value, P> get_parser(P p) {
 	return p;
 }
-template <class F> constexpr std::enable_if_t<is_char_class<F>::value, Char<F>> get_parser(F f) {
-	return Char(f);
+template <class F> constexpr std::enable_if_t<is_char_class<F>::value, CharClass<F>> get_parser(F f) {
+	return CharClass<F>(f);
 }
 constexpr auto any_char() {
-	return Char([](char c) {
+	return CharClass([](char c) {
 		return true;
 	});
 }
 constexpr auto range(char first, char last) {
-	return Char([first, last](char c) {
+	return CharClass([first, last](char c) {
 		return c >= first && c <= last;
 	});
 }
@@ -290,7 +290,7 @@ public:
 	}
 };
 
-template <class F, class C> Result parse_impl(const Char<F>& p, Context& context, const C& callback) {
+template <class F, class C> Result parse_impl(const CharClass<F>& p, Context& context, const C& callback) {
 	if (context && p.f(*context)) {
 		++context;
 		return SUCCESS;
