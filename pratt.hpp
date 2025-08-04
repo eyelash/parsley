@@ -124,7 +124,7 @@ template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result
 	if (result == FAILURE) {
 		return parse_nud(pratt, level, op.tail, context, callback);
 	}
-	return parse_pratt(pratt, level, context, TaggedCallback<Op_T, C>(callback));
+	return parse_pratt(pratt, level, context, MapCallback<Op_T, C>(callback));
 }
 
 template <class P, class L_T, class C> Result parse_nud(const P& pratt, const Pratt<L_T>& level, Context& context, const C& callback) {
@@ -152,7 +152,7 @@ template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result
 	if (result == FAILURE) {
 		return parse_led(pratt, level, op.tail, context, callback);
 	}
-	return parse_pratt(pratt, level.tail, context, TaggedCallback<Op_T, C>(callback));
+	return parse_pratt(pratt, level.tail, context, MapCallback<Op_T, C>(callback));
 }
 template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result parse_led(const P& pratt, const L& level, const PrattLevel<InfixRTL<Op_T, Op_P>, Op...>& op, Context& context, const C& callback) {
 	// InfixRTL
@@ -163,7 +163,7 @@ template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result
 	if (result == FAILURE) {
 		return parse_led(pratt, level, op.tail, context, callback);
 	}
-	return parse_pratt(pratt, level, context, TaggedCallback<Op_T, C>(callback));
+	return parse_pratt(pratt, level, context, MapCallback<Op_T, C>(callback));
 }
 template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result parse_led(const P& pratt, const L& level, const PrattLevel<Postfix<Op_T, Op_P>, Op...>& op, Context& context, const C& callback) {
 	// Postfix
