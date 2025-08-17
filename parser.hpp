@@ -175,6 +175,10 @@ public:
 template <class F, class = bool> struct is_char_class: std::false_type {};
 template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declval<char>()))>: std::true_type {};
 
+template <class F> constexpr CharClass<F> char_class(F f) {
+	return CharClass<F>(f);
+}
+
 constexpr CharClass<Char> get_parser(char c) {
 	return CharClass<Char>(Char(c));
 }
