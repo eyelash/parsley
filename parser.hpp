@@ -188,11 +188,11 @@ constexpr StringView get_parser(const StringView& s) {
 constexpr StringView get_parser(const char* s) {
 	return StringView(s);
 }
-template <class P> constexpr std::enable_if_t<!is_char_class<P>::value, P> get_parser(P p) {
-	return p;
+constexpr CharClass<bool (*)(char)> get_parser(bool (*f)(char)) {
+	return CharClass<bool (*)(char)>(f);
 }
-template <class F> constexpr std::enable_if_t<is_char_class<F>::value, CharClass<F>> get_parser(F f) {
-	return CharClass<F>(f);
+template <class P> constexpr P get_parser(P p) {
+	return p;
 }
 
 constexpr CharClass<AnyChar> any_char() {
