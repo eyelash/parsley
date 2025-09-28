@@ -179,8 +179,8 @@ template <class F> constexpr CharClass<F> char_class(F f) {
 	return CharClass<F>(f);
 }
 
-constexpr CharClass<Char> get_parser(char c) {
-	return CharClass<Char>(Char(c));
+constexpr char get_parser(char c) {
+	return c;
 }
 constexpr StringView get_parser(const StringView& s) {
 	return StringView(s);
@@ -319,6 +319,10 @@ template <class F, class C> Result parse_impl(const CharClass<F>& p, Context& co
 		return SUCCESS;
 	}
 	return FAILURE;
+}
+
+template <class C> Result parse_impl(char c, Context& context, const C& callback) {
+	return parse_impl(CharClass<Char>(Char(c)), context, callback);
 }
 
 template <class C> Result parse_impl(const StringView& s, Context& context, const C& callback) {
