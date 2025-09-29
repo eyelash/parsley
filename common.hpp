@@ -196,25 +196,3 @@ inline std::vector<char> read_file(const char* path) {
 	std::ifstream file(path);
 	return std::vector<char>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
-
-class SourceFile {
-	const char* path;
-	std::vector<char> content;
-public:
-	SourceFile(const char* path): path(path), content(read_file(path)) {}
-	const char* get_path() const {
-		return path;
-	}
-	const char* data() const {
-		return content.data();
-	}
-	std::size_t size() const {
-		return content.size();
-	}
-	const char* begin() const {
-		return content.data();
-	}
-	const char* end() const {
-		return content.data() + content.size();
-	}
-};

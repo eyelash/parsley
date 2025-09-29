@@ -16,7 +16,6 @@ public:
 	Context(const StringView& s): position(s.begin()), end(s.end()), begin(s.begin()) {}
 	Context(const char* s): Context(StringView(s)) {}
 	Context(const std::vector<char>& v): Context(StringView(v.data(), v.size())) {}
-	Context(const SourceFile* file): Context(StringView(file->data(), file->size())) {}
 	explicit constexpr operator bool() const {
 		return position < end;
 	}

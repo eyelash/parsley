@@ -329,8 +329,8 @@ inline void print_error(const char* path, std::size_t source_position, const std
 		print_message(context, red, "error", get_printer(message));
 		return;
 	}
-	SourceFile file(path);
-	print_message(context, path, StringView(file.data(), file.size()), source_position, red, "error", get_printer(message));
+	auto source = read_file(path);
+	print_message(context, path, StringView(source.data(), source.size()), source_position, red, "error", get_printer(message));
 }
 inline void print_error(const char* path, const StringView& source, std::size_t source_position, const std::string& message) {
 	Context context(std::cerr);
