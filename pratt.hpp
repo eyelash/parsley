@@ -113,7 +113,7 @@ template <class P, class L, class Op_T, class... Op, class C> Result parse_nud(c
 	if (result == FAILURE) {
 		return parse_nud(pratt, level, op.tail, context, callback);
 	}
-	return result;
+	return SUCCESS;
 }
 template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result parse_nud(const P& pratt, const L& level, const PrattLevel<Prefix<Op_T, Op_P>, Op...>& op, Context& context, const C& callback) {
 	// Prefix
@@ -174,7 +174,7 @@ template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result
 	if (result == FAILURE) {
 		return parse_led(pratt, level, op.tail, context, callback);
 	}
-	callback.push(Tag<Op_T>());
+	Op_T::map(callback);
 	return SUCCESS;
 }
 

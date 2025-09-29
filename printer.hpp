@@ -289,13 +289,10 @@ template <class P, class C> void print_message(Context& context, const char* pat
 	const char* line_start = c;
 	while (c < position) {
 		if (*c == '\n') {
-			++c;
 			++line_number;
-			line_start = c;
+			line_start = c + 1;
 		}
-		else {
-			++c;
-		}
+		++c;
 	}
 	const unsigned int column = 1 + (c - line_start);
 	const unsigned int line_number_width = print_number(line_number).get_width();
