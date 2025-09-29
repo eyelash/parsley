@@ -32,7 +32,7 @@ public:
 	const std::string& get_error() const {
 		return error;
 	}
-	SavePoint save() const {
+	constexpr SavePoint save() const {
 		return position;
 	}
 	void restore(SavePoint save_point) {
@@ -171,9 +171,6 @@ public:
 	constexpr Reference_() {}
 };
 
-template <class F, class = bool> struct is_char_class: std::false_type {};
-template <class F> struct is_char_class<F, decltype(std::declval<F>()(std::declval<char>()))>: std::true_type {};
-
 template <class F> constexpr CharClass<F> char_class(F f) {
 	return CharClass<F>(f);
 }
@@ -274,6 +271,7 @@ class IgnoreCallback {
 public:
 	constexpr IgnoreCallback() {}
 	template <class... A> constexpr void push(A&&...) const {}
+	template <class C> constexpr void retrieve(const C& callback) const {}
 };
 
 template <class T> class GetValueCallback {
