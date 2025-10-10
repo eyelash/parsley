@@ -312,6 +312,7 @@ public:
 
 template <class F, class C> Result parse_impl(const CharClass<F>& p, Context& context, const C& callback) {
 	if (context && p.f(*context)) {
+		callback.push(*context);
 		++context;
 		return SUCCESS;
 	}
@@ -331,6 +332,7 @@ template <class C> Result parse_impl(const StringView& s, Context& context, cons
 		}
 		++context;
 	}
+	callback.push(context - save_point);
 	return SUCCESS;
 }
 
@@ -381,7 +383,7 @@ template <class P, class C> Result parse_impl(const Repetition<P>& p, Context& c
 
 template <class P, class C> Result parse_impl(const Not<P>& p, Context& context, const C& callback) {
 	const SavePoint save_point = context.save();
-	const Result result = parse_impl(p.p, context, callback);
+	const Result result = parse_impl(p.p, context, IgnoreCallback());
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -398,7 +400,7 @@ template <class P, class C> Result parse_impl(const Ignore<P>& p, Context& conte
 
 template <class P, class C> Result parse_impl(const ToString<P>& p, Context& context, const C& callback) {
 	const SavePoint save_point = context.save();
-	const Result result = parse_impl(p.p, context, callback);
+	const Result result = parse_impl(p.p, context, IgnoreCallback());
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -434,7 +436,7 @@ template <class C> Result parse_impl(const Error_& p, Context& context, const C&
 }
 
 template <class C> Result parse_impl(const Expect& p, Context& context, const C& callback) {
-	const Result result = parse_impl(p.s, context, callback);
+	const Result result = parse_impl(p.s, context, IgnoreCallback());
 	if (result == ERROR) {
 		return ERROR;
 	}

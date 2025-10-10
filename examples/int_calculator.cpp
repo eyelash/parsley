@@ -4,10 +4,10 @@
 
 using namespace parser;
 
-constexpr auto white_space = zero_or_more(' ');
+constexpr auto white_space = ignore(zero_or_more(' '));
 
 template <class P> static constexpr auto op(P p) {
-	return sequence(white_space, p, white_space);
+	return sequence(white_space, ignore(p), white_space);
 }
 
 enum Operation {
@@ -29,11 +29,8 @@ class IntCollector {
 	unsigned int n;
 public:
 	IntCollector(): n(0) {}
-	void push(const StringView& s) {
-		n = 0;
-		for (char c: s) {
-			n = n * 10 + (c - '0');
-		}
+	void push(char c) {
+		n = n * 10 + (c - '0');
 	}
 	void push(unsigned int n) {
 		this->n = n;
@@ -55,7 +52,7 @@ public:
 	}
 };
 
-constexpr auto number = collect<IntCollector>(to_string(one_or_more(range('0', '9'))));
+constexpr auto number = collect<IntCollector>(one_or_more(range('0', '9')));
 
 struct Expression;
 constexpr auto expression = reference<Expression>();
@@ -72,7 +69,7 @@ struct Expression {
 		pratt_level(
 			terminal(choice(
 				number,
-				sequence('(', white_space, expression, white_space, expect(")")),
+				sequence(ignore('('), white_space, expression, white_space, expect(")")),
 				error("expected an expression")
 			))
 		)
