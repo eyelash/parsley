@@ -47,10 +47,10 @@ constexpr StringView get_printer(const StringView& s) {
 constexpr StringView get_printer(const char* s) {
 	return StringView(s);
 }
-StringView get_printer(const std::string& s) {
+inline StringView get_printer(const std::string& s) {
 	return StringView(s.data(), s.size());
 }
-template <class P> constexpr std::enable_if_t<is_printer<P>::value, P> get_printer(P p) {
+template <class P> constexpr P get_printer(P p) {
 	return p;
 }
 
