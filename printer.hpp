@@ -340,12 +340,19 @@ inline void print_warning(const char* path, const StringView& source, std::size_
 
 }
 
+template <class P> void print(printer::Context& context, P&& p) {
+	using namespace printer;
+	print_impl(get_printer(std::forward<P>(p)), context);
+}
 template <class P> void print(std::ostream& ostream, P&& p) {
 	printer::Context context(ostream);
-	printer::print_impl(printer::get_printer(std::forward<P>(p)), context);
+	print(context, std::forward<P>(p));
 }
 template <class P> void print(P&& p) {
 	print(std::cout, std::forward<P>(p));
+}
+template <class P> void println(P&& p) {
+	print(printer::ln(std::forward<P>(p)));
 }
 template <class P> std::string print_to_string(P&& p) {
 	std::ostringstream ostream;
