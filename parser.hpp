@@ -175,45 +175,23 @@ template <class F> constexpr CharClass<F> char_class(F f) {
 	return CharClass<F>(f);
 }
 
-constexpr char get_parser(char c) {
-	return c;
-}
-constexpr StringView get_parser(const StringView& s) {
-	return StringView(s);
-}
-constexpr StringView get_parser(const char* s) {
-	return StringView(s);
-}
-constexpr CharClass<bool (*)(char)> get_parser(bool (*f)(char)) {
-	return CharClass<bool (*)(char)>(f);
-}
-template <class P> constexpr P get_parser(P p) {
-	return p;
-}
-
 constexpr CharClass<AnyChar> any_char() {
 	return CharClass<AnyChar>(AnyChar());
 }
 constexpr CharClass<CharRange> range(char first, char last) {
 	return CharClass<CharRange>(CharRange(first, last));
 }
-template <class... P> constexpr Sequence<P...> sequence_(P... p) {
+template <class... P> constexpr Sequence<P...> sequence(P... p) {
 	return Sequence<P...>(p...);
 }
-template <class... P> constexpr auto sequence(P... p) {
-	return sequence_(get_parser(p)...);
-}
-template <class... P> constexpr Choice<P...> choice_(P... p) {
+template <class... P> constexpr Choice<P...> choice(P... p) {
 	return Choice<P...>(p...);
-}
-template <class... P> constexpr auto choice(P... p) {
-	return choice_(get_parser(p)...);
 }
 constexpr auto empty() {
 	return sequence();
 }
-template <class P> constexpr auto repetition(P p) {
-	return Repetition(get_parser(p));
+template <class P> constexpr Repetition<P> repetition(P p) {
+	return Repetition<P>(p);
 }
 template <class P> constexpr auto zero_or_more(P p) {
 	return repetition(p);
@@ -224,8 +202,8 @@ template <class P> constexpr auto one_or_more(P p) {
 template <class P> constexpr auto optional(P p) {
 	return choice(p, empty());
 }
-template <class P> constexpr auto not_(P p) {
-	return Not(get_parser(p));
+template <class P> constexpr Not<P> not_(P p) {
+	return Not<P>(p);
 }
 template <class P> constexpr auto and_(P p) {
 	return not_(not_(p));
@@ -233,29 +211,20 @@ template <class P> constexpr auto and_(P p) {
 constexpr auto end() {
 	return not_(any_char());
 }
-template <class P> constexpr auto ignore(P p) {
-	return Ignore(get_parser(p));
+template <class P> constexpr Ignore<P> ignore(P p) {
+	return Ignore<P>(p);
 }
-template <class P> constexpr auto to_string(P p) {
-	return ToString(get_parser(p));
+template <class P> constexpr ToString<P> to_string(P p) {
+	return ToString<P>(p);
 }
-template <class T, class P> constexpr Map<T, P> map_(P p) {
+template <class T, class P> constexpr Map<T, P> map(P p) {
 	return Map<T, P>(p);
 }
-template <class T, class P> constexpr auto map(P p) {
-	return map_<T>(get_parser(p));
-}
-template <class T, class P> constexpr Collect<T, P> collect_(P p) {
+template <class T, class P> constexpr Collect<T, P> collect(P p) {
 	return Collect<T, P>(p);
 }
-template <class T, class P> constexpr auto collect(P p) {
-	return collect_<T>(get_parser(p));
-}
-template <class T, class P> constexpr Tagged<T, P> tagged_(P p) {
+template <class T, class P> constexpr Tagged<T, P> tagged(P p) {
 	return Tagged<T, P>(p);
-}
-template <class T, class P> constexpr auto tagged(P p) {
-	return tagged_<T>(get_parser(p));
 }
 constexpr Error_ error(const StringView& s) {
 	return Error_(s);
@@ -323,6 +292,10 @@ template <class C> Result parse_impl(char c, Context& context, const C& callback
 	return parse_impl(CharClass<Char>(Char(c)), context, callback);
 }
 
+template <class C> Result parse_impl(bool (*f)(char), Context& context, const C& callback) {
+	return parse_impl(CharClass<bool (*)(char)>(f), context, callback);
+}
+
 template <class C> Result parse_impl(const StringView& s, Context& context, const C& callback) {
 	const SavePoint save_point = context.save();
 	for (char c: s) {
@@ -334,6 +307,10 @@ template <class C> Result parse_impl(const StringView& s, Context& context, cons
 	}
 	callback.push(context - save_point);
 	return SUCCESS;
+}
+
+template <class C> Result parse_impl(const char* s, Context& context, const C& callback) {
+	return parse_impl(StringView(s), context, callback);
 }
 
 template <class C> Result parse_impl(const Sequence<>& p, Context& context, const C& callback, const SavePoint& save_point) {

@@ -58,32 +58,20 @@ public:
 	constexpr Pratt(P0 head, P... tail): head(head), tail(tail...) {}
 };
 
-template <class P> constexpr auto terminal(P p) {
-	return Terminal(get_parser(p));
+template <class P> constexpr Terminal<P> terminal(P p) {
+	return Terminal<P>(p);
 }
-template <class T, class P> constexpr InfixLTR<T, P> infix_ltr_(P p) {
+template <class T, class P> constexpr InfixLTR<T, P> infix_ltr(P p) {
 	return InfixLTR<T, P>(p);
 }
-template <class T, class P> constexpr auto infix_ltr(P p) {
-	return infix_ltr_<T>(get_parser(p));
-}
-template <class T, class P> constexpr InfixRTL<T, P> infix_rtl_(P p) {
+template <class T, class P> constexpr InfixRTL<T, P> infix_rtl(P p) {
 	return InfixRTL<T, P>(p);
 }
-template <class T, class P> constexpr auto infix_rtl(P p) {
-	return infix_rtl_<T>(get_parser(p));
-}
-template <class T, class P> constexpr Prefix<T, P> prefix_(P p) {
+template <class T, class P> constexpr Prefix<T, P> prefix(P p) {
 	return Prefix<T, P>(p);
 }
-template <class T, class P> constexpr auto prefix(P p) {
-	return prefix_<T>(get_parser(p));
-}
-template <class T, class P> constexpr Postfix<T, P> postfix_(P p) {
+template <class T, class P> constexpr Postfix<T, P> postfix(P p) {
 	return Postfix<T, P>(p);
-}
-template <class T, class P> constexpr auto postfix(P p) {
-	return postfix_<T>(get_parser(p));
 }
 template <class... P> constexpr PrattLevel<P...> pratt_level(P... p) {
 	return PrattLevel<P...>(p...);
