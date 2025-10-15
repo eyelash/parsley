@@ -161,27 +161,57 @@ template <class... T> constexpr auto format(const char* s, T&&... t) {
 	return Format(s, get_printer(std::forward<T>(t))...);
 }
 
-constexpr auto bold = [](const auto& t) {
-	return print_tuple("\x1B[1m", t, "\x1B[22m");
+template <class T> constexpr auto bold(T&& t) {
+	return print_tuple("\x1B[1m", std::forward<T>(t), "\x1B[22m");
+}
+class Red {
+public:
+	constexpr Red() {}
+	template <class T> constexpr auto operator ()(T&& t) const {
+		return print_tuple("\x1B[31m", std::forward<T>(t), "\x1B[39m");
+	}
 };
-constexpr auto red = [](const auto& t) {
-	return print_tuple("\x1B[31m", t, "\x1B[39m");
+class Green {
+public:
+	constexpr Green() {}
+	template <class T> constexpr auto operator ()(T&& t) const {
+		return print_tuple("\x1B[32m", std::forward<T>(t), "\x1B[39m");
+	}
 };
-constexpr auto green = [](const auto& t) {
-	return print_tuple("\x1B[32m", t, "\x1B[39m");
+class Yellow {
+public:
+	constexpr Yellow() {}
+	template <class T> constexpr auto operator ()(T&& t) const {
+		return print_tuple("\x1B[33m", std::forward<T>(t), "\x1B[39m");
+	}
 };
-constexpr auto yellow = [](const auto& t) {
-	return print_tuple("\x1B[33m", t, "\x1B[39m");
+class Blue {
+public:
+	constexpr Blue() {}
+	template <class T> constexpr auto operator ()(T&& t) const {
+		return print_tuple("\x1B[34m", std::forward<T>(t), "\x1B[39m");
+	}
 };
-constexpr auto blue = [](const auto& t) {
-	return print_tuple("\x1B[34m", t, "\x1B[39m");
+class Magenta {
+public:
+	constexpr Magenta() {}
+	template <class T> constexpr auto operator ()(T&& t) const {
+		return print_tuple("\x1B[35m", std::forward<T>(t), "\x1B[39m");
+	}
 };
-constexpr auto magenta = [](const auto& t) {
-	return print_tuple("\x1B[35m", t, "\x1B[39m");
+class Cyan {
+public:
+	constexpr Cyan() {}
+	template <class T> constexpr auto operator ()(T&& t) const {
+		return print_tuple("\x1B[36m", std::forward<T>(t), "\x1B[39m");
+	}
 };
-constexpr auto cyan = [](const auto& t) {
-	return print_tuple("\x1B[36m", t, "\x1B[39m");
-};
+constexpr Red red;
+constexpr Green green;
+constexpr Yellow yellow;
+constexpr Blue blue;
+constexpr Magenta magenta;
+constexpr Cyan cyan;
 
 class NumberPrinter {
 	unsigned int n;
