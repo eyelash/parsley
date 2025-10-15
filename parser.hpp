@@ -171,6 +171,49 @@ public:
 	constexpr Reference_() {}
 };
 
+class IgnoreCallback {
+public:
+	constexpr IgnoreCallback() {}
+	template <class... A> constexpr void push(A&&...) const {}
+	template <class C> constexpr void retrieve(const C& callback) const {}
+};
+
+template <class T> class GetValueCallback {
+	T& value;
+public:
+	constexpr GetValueCallback(T& value): value(value) {}
+	template <class... A> void push(A&&... a) const {
+		value = T(std::forward<A>(a)...);
+	}
+};
+
+template <class T, class C> class MapCallback {
+	const C& callback;
+public:
+	MapCallback(const C& callback): callback(callback) {}
+	template <class... A> void push(A&&... a) const {
+		T::map(callback, std::forward<A>(a)...);
+	}
+};
+
+template <class T> class CollectCallback {
+	T& collector;
+public:
+	constexpr CollectCallback(T& collector): collector(collector) {}
+	template <class... A> void push(A&&... a) const {
+		collector.push(std::forward<A>(a)...);
+	}
+};
+
+template <class T, class C> class TaggedCallback {
+	const C& callback;
+public:
+	TaggedCallback(const C& callback): callback(callback) {}
+	template <class... A> void push(A&&... a) const {
+		callback.push(std::forward<A>(a)..., Tag<T>());
+	}
+};
+
 template <class F> constexpr CharClass<F> char_class(F f) {
 	return CharClass<F>(f);
 }
@@ -235,49 +278,6 @@ constexpr Expect expect(const StringView& s) {
 template <class T> constexpr auto reference() {
 	return Reference_<T>();
 }
-
-class IgnoreCallback {
-public:
-	constexpr IgnoreCallback() {}
-	template <class... A> constexpr void push(A&&...) const {}
-	template <class C> constexpr void retrieve(const C& callback) const {}
-};
-
-template <class T> class GetValueCallback {
-	T& value;
-public:
-	constexpr GetValueCallback(T& value): value(value) {}
-	template <class... A> void push(A&&... a) const {
-		value = T(std::forward<A>(a)...);
-	}
-};
-
-template <class T, class C> class MapCallback {
-	const C& callback;
-public:
-	MapCallback(const C& callback): callback(callback) {}
-	template <class... A> void push(A&&... a) const {
-		T::map(callback, std::forward<A>(a)...);
-	}
-};
-
-template <class T> class CollectCallback {
-	T& collector;
-public:
-	constexpr CollectCallback(T& collector): collector(collector) {}
-	template <class... A> void push(A&&... a) const {
-		collector.push(std::forward<A>(a)...);
-	}
-};
-
-template <class T, class C> class TaggedCallback {
-	const C& callback;
-public:
-	TaggedCallback(const C& callback): callback(callback) {}
-	template <class... A> void push(A&&... a) const {
-		callback.push(std::forward<A>(a)..., Tag<T>());
-	}
-};
 
 template <class F, class C> Result parse_impl(const CharClass<F>& p, Context& context, const C& callback) {
 	if (context && p.f(*context)) {
