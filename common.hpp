@@ -14,7 +14,9 @@ template <class T> class Reference {
 public:
 	Reference(T* pointer = nullptr): pointer(pointer) {}
 	Reference(const Reference&) = delete;
-	Reference(Reference&& reference): pointer(std::exchange(reference.pointer, nullptr)) {}
+	Reference(Reference&& reference): pointer(reference.pointer) {
+		reference.pointer = nullptr;
+	}
 	~Reference() {
 		if (pointer) {
 			delete pointer;
@@ -22,7 +24,11 @@ public:
 	}
 	Reference& operator =(const Reference&) = delete;
 	Reference& operator =(Reference&& reference) {
-		std::swap(pointer, reference.pointer);
+		if (pointer) {
+			delete pointer;
+		}
+		pointer = reference.pointer;
+		reference.pointer = nullptr;
 		return *this;
 	}
 	operator T*() const {
