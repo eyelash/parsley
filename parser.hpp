@@ -214,6 +214,15 @@ public:
 	}
 };
 
+template <class T> class TagMapper {
+public:
+	constexpr TagMapper() {}
+	template <class C, class... A> static void map(const C& callback, A&&... a) {
+		T tag;
+		callback.push(std::forward<A>(a)..., tag);
+	}
+};
+
 template <class F> constexpr CharClass<F> char_class(F f) {
 	return CharClass<F>(f);
 }
@@ -268,6 +277,9 @@ template <class T, class P> constexpr Collect<T, P> collect(P p) {
 }
 template <class T, class P> constexpr Tagged<T, P> tagged(P p) {
 	return Tagged<T, P>(p);
+}
+template <class T, class P> constexpr auto tag(P p) {
+	return map<TagMapper<T>>(p);
 }
 constexpr Error_ error(const StringView& s) {
 	return Error_(s);
