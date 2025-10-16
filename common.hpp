@@ -9,6 +9,33 @@
 #include <vector>
 #include <iterator>
 
+class Dynamic {
+	int type_id;
+public:
+	Dynamic(int type_id): type_id(type_id) {}
+	virtual ~Dynamic() {}
+	int get_type_id() const {
+		return type_id;
+	}
+};
+
+template <class T, class U> T* as(U* u) {
+	if (u && u->get_type_id() == T::TYPE_ID) {
+		return static_cast<T*>(u);
+	}
+	else {
+		return nullptr;
+	}
+}
+template <class T, class U> const T* as(const U* u) {
+	if (u && u->get_type_id() == T::TYPE_ID) {
+		return static_cast<const T*>(u);
+	}
+	else {
+		return nullptr;
+	}
+}
+
 template <class T> class Reference {
 	T* pointer;
 public:
