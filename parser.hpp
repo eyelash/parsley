@@ -148,12 +148,6 @@ public:
 	constexpr Collect(P p): p(p) {}
 };
 
-template <class T, class P> class Tagged {
-public:
-	P p;
-	constexpr Tagged(P p): p(p) {}
-};
-
 class Error_ {
 public:
 	StringView s;
@@ -202,15 +196,6 @@ public:
 	constexpr CollectCallback(T& collector): collector(collector) {}
 	template <class... A> void push(A&&... a) const {
 		collector.push(std::forward<A>(a)...);
-	}
-};
-
-template <class T, class C> class TaggedCallback {
-	const C& callback;
-public:
-	TaggedCallback(const C& callback): callback(callback) {}
-	template <class... A> void push(A&&... a) const {
-		callback.push(std::forward<A>(a)..., Tag<T>());
 	}
 };
 
@@ -274,9 +259,6 @@ template <class T, class P> constexpr Map<T, P> map(P p) {
 }
 template <class T, class P> constexpr Collect<T, P> collect(P p) {
 	return Collect<T, P>(p);
-}
-template <class T, class P> constexpr Tagged<T, P> tagged(P p) {
-	return Tagged<T, P>(p);
 }
 template <class T, class P> constexpr auto tag(P p) {
 	return map<TagMapper<T>>(p);
@@ -413,10 +395,6 @@ template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, C
 		collector.retrieve(callback);
 	}
 	return result;
-}
-
-template <class T, class P, class C> Result parse_impl(const Tagged<T, P>& p, Context& context, const C& callback) {
-	return parse_impl(p.p, context, TaggedCallback<T, C>(callback));
 }
 
 template <class C> Result parse_impl(const Error_& p, Context& context, const C& callback) {
