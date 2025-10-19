@@ -319,7 +319,7 @@ template <class P0, class... P, class C> Result parse_impl(const Sequence<P0, P.
 		context.restore(save_point);
 		return FAILURE;
 	}
-	return parse_impl(p.tail, context, callback);
+	return parse_impl(p.tail, context, callback, save_point);
 }
 template <class... P, class C> Result parse_impl(const Sequence<P...>& p, Context& context, const C& callback) {
 	return parse_impl(p, context, callback, context.save());
