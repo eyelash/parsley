@@ -170,6 +170,7 @@ public:
 	constexpr IgnoreCallback() {}
 	template <class... A> constexpr void push(A&&...) const {}
 	template <class C> constexpr void retrieve(const C& callback) const {}
+	template <class C, class... A> static constexpr void map(const C& callback, A&&...) {}
 };
 
 template <class T> class GetValueCallback {
@@ -184,7 +185,7 @@ public:
 template <class T, class C> class MapCallback {
 	const C& callback;
 public:
-	MapCallback(const C& callback): callback(callback) {}
+	constexpr MapCallback(const C& callback): callback(callback) {}
 	template <class... A> void push(A&&... a) const {
 		T::map(callback, std::forward<A>(a)...);
 	}
@@ -375,10 +376,11 @@ template <class P, class C> Result parse_impl(const ToString<P>& p, Context& con
 	if (result == ERROR) {
 		return ERROR;
 	}
-	if (result == SUCCESS) {
-		callback.push(context - save_point);
+	if (result == FAILURE) {
+		return FAILURE;
 	}
-	return result;
+	callback.push(context - save_point);
+	return SUCCESS;
 }
 
 template <class T, class P, class C> Result parse_impl(const Map<T, P>& p, Context& context, const C& callback) {
@@ -391,10 +393,11 @@ template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, C
 	if (result == ERROR) {
 		return ERROR;
 	}
-	if (result == SUCCESS) {
-		collector.retrieve(callback);
+	if (result == FAILURE) {
+		return FAILURE;
 	}
-	return result;
+	collector.retrieve(callback);
+	return SUCCESS;
 }
 
 template <class C> Result parse_impl(const Error_& p, Context& context, const C& callback) {

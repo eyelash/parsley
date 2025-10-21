@@ -213,64 +213,64 @@ constexpr Blue blue;
 constexpr Magenta magenta;
 constexpr Cyan cyan;
 
-class NumberPrinter {
+class Number {
 	unsigned int n;
 public:
-	constexpr NumberPrinter(unsigned int n): n(n) {}
+	constexpr Number(unsigned int n): n(n) {}
 	void print(Context& context) const {
 		if (n >= 10) {
-			NumberPrinter(n / 10).print(context);
+			Number(n / 10).print(context);
 		}
 		context.print(static_cast<char>('0' + n % 10));
 	}
 	unsigned int get_width() const {
 		unsigned int width = 0;
 		if (n >= 10) {
-			width += NumberPrinter(n / 10).get_width();
+			width += Number(n / 10).get_width();
 		}
 		return width + 1;
 	}
 };
-constexpr NumberPrinter print_number(unsigned int n) {
-	return NumberPrinter(n);
+constexpr Number print_number(unsigned int n) {
+	return Number(n);
 }
 
-class HexadecimalPrinter {
+class Hexadecimal {
 	unsigned int n;
 	unsigned int digits;
 	static constexpr char get_hex(unsigned int c) {
 		return c < 10 ? '0' + c : 'A' + (c - 10);
 	}
 public:
-	constexpr HexadecimalPrinter(unsigned int n, unsigned int digits = 1): n(n), digits(digits) {}
+	constexpr Hexadecimal(unsigned int n, unsigned int digits = 1): n(n), digits(digits) {}
 	void print(Context& context) const {
 		if (n >= 16 || digits > 1) {
-			HexadecimalPrinter(n / 16, digits > 1 ? digits - 1 : digits).print(context);
+			Hexadecimal(n / 16, digits > 1 ? digits - 1 : digits).print(context);
 		}
 		context.print(get_hex(n % 16));
 	}
 };
-constexpr HexadecimalPrinter print_hexadecimal(unsigned int n, unsigned int digits = 1) {
-	return HexadecimalPrinter(n, digits);
+constexpr Hexadecimal print_hexadecimal(unsigned int n, unsigned int digits = 1) {
+	return Hexadecimal(n, digits);
 }
-template <class T> constexpr HexadecimalPrinter print_pointer(const T* ptr) {
-	return HexadecimalPrinter(reinterpret_cast<std::size_t>(ptr));
+template <class T> constexpr Hexadecimal print_pointer(const T* ptr) {
+	return Hexadecimal(reinterpret_cast<std::size_t>(ptr));
 }
 
-class OctalPrinter {
+class Octal {
 	unsigned int n;
 	unsigned int digits;
 public:
-	constexpr OctalPrinter(unsigned int n, unsigned int digits = 1): n(n), digits(digits) {}
+	constexpr Octal(unsigned int n, unsigned int digits = 1): n(n), digits(digits) {}
 	void print(Context& context) const {
 		if (n >= 8 || digits > 1) {
-			OctalPrinter(n / 8, digits > 1 ? digits - 1 : digits).print(context);
+			Octal(n / 8, digits > 1 ? digits - 1 : digits).print(context);
 		}
 		context.print(static_cast<char>('0' + n % 8));
 	}
 };
-constexpr OctalPrinter print_octal(unsigned int n, unsigned int digits = 1) {
-	return OctalPrinter(n, digits);
+constexpr Octal print_octal(unsigned int n, unsigned int digits = 1) {
+	return Octal(n, digits);
 }
 
 template <class P> class Repeat {

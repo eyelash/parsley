@@ -76,7 +76,15 @@ struct Expression {
 	);
 };
 
-constexpr auto program = sequence(white_space, expression, white_space, choice(end(), error("unexpected character at end of program")));
+constexpr auto program = sequence(
+	white_space,
+	expression,
+	white_space,
+	choice(
+		end(),
+		error("unexpected character at end of program")
+	)
+);
 
 int main(int argc, const char** argv) {
 	using namespace printer;
