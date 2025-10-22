@@ -48,7 +48,7 @@ constexpr StringView get_printer(const char* s) {
 	return StringView(s);
 }
 inline StringView get_printer(const std::string& s) {
-	return StringView(s.data(), s.size());
+	return StringView(s);
 }
 template <class P> constexpr P get_printer(P p) {
 	return p;

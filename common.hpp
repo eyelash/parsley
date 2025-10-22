@@ -75,10 +75,10 @@ class StringView {
 	const char* string;
 	std::size_t length;
 	static constexpr int strcmp(const char* s0, const char* s1) {
-		return *s0 != *s1 ? *s0 - *s1 : *s0 == '\0' ? 0 : strcmp(s0 + 1, s1 + 1);
+		return *s0 != *s1 ? static_cast<unsigned char>(*s0) - static_cast<unsigned char>(*s1) : *s0 == '\0' ? 0 : strcmp(s0 + 1, s1 + 1);
 	}
-	static constexpr int strncmp(const char* s0, const char* s1, std::size_t n) {
-		return n == 0 ? 0 : *s0 != *s1 ? *s0 - *s1 : strncmp(s0 + 1, s1 + 1, n - 1);
+	static constexpr int memcmp(const char* s0, const char* s1, std::size_t n) {
+		return n == 0 ? 0 : *s0 != *s1 ? static_cast<unsigned char>(*s0) - static_cast<unsigned char>(*s1) : memcmp(s0 + 1, s1 + 1, n - 1);
 	}
 	static constexpr const char* strchr(const char* s, char c) {
 		return *s == c ? s : *s == '\0' ? nullptr : strchr(s + 1, c);
@@ -89,7 +89,8 @@ class StringView {
 public:
 	constexpr StringView(): string(nullptr), length(0) {}
 	constexpr StringView(const char* string, std::size_t length): string(string), length(length) {}
-	constexpr StringView(const char* string): string(string), length(strlen(string)) {}
+	constexpr StringView(const char* s): StringView(s, strlen(s)) {}
+	StringView(const std::string& s): StringView(s.data(), s.size()) {}
 	constexpr char operator [](std::size_t i) const {
 		return string[i];
 	}
@@ -109,13 +110,14 @@ public:
 		return length == 0;
 	}
 	constexpr bool operator ==(const StringView& s) const {
-		return length != s.length ? false : strncmp(string, s.string, length) == 0;
+		return length != s.length ? false : memcmp(string, s.string, length) == 0;
 	}
 	constexpr bool operator !=(const StringView& s) const {
 		return !operator ==(s);
 	}
 	constexpr bool operator <(const StringView& s) const {
-		return length != s.length ? length < s.length : strncmp(string, s.string, length) < 0;
+		// note that this is not a lexicographical ordering, shorter strings will be ordered before longer strings
+		return length != s.length ? length < s.length : memcmp(string, s.string, length) < 0;
 	}
 	constexpr const char* begin() const {
 		return string;
@@ -133,10 +135,10 @@ public:
 		return StringView(string + pos, length - pos);
 	}
 	constexpr bool starts_with(const StringView& s) const {
-		return length < s.length ? false : strncmp(string, s.string, s.length) == 0;
+		return length < s.length ? false : memcmp(string, s.string, s.length) == 0;
 	}
 	constexpr bool ends_with(const StringView& s) const {
-		return length < s.length ? false : strncmp(string + length - s.length, s.string, s.length) == 0;
+		return length < s.length ? false : memcmp(string + length - s.length, s.string, s.length) == 0;
 	}
 };
 
@@ -220,9 +222,6 @@ public:
 };
 constexpr CodePoints code_points(const StringView& s) {
 	return CodePoints(s);
-}
-inline CodePoints code_points(const std::string& s) {
-	return CodePoints(StringView(s.data(), s.size()));
 }
 
 inline std::vector<char> read_file(const char* path) {
