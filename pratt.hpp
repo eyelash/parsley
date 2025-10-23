@@ -202,10 +202,12 @@ template <class P, class L_T, class L0, class... L, class C> Result parse_led(co
 
 template <class T, class... P, class L, class C> Result parse_pratt(const Pratt<T, P...>& pratt, const L& level, Context& context, const C& callback) {
 	T collector;
+	const SavePoint save_point = context.save();
 	const Result result = parse_nud(pratt, pratt, context, CollectCallback<T>(collector));
 	if (result != SUCCESS) {
 		return result;
 	}
+	collector.set_location(context.get_location(save_point));
 	while (true) {
 		const Result result = parse_led(pratt, level, context, CollectCallback<T>(collector));
 		if (result == ERROR) {
@@ -214,6 +216,7 @@ template <class T, class... P, class L, class C> Result parse_pratt(const Pratt<
 		if (result == FAILURE) {
 			break;
 		}
+		collector.set_location(context.get_location(save_point));
 	}
 	collector.retrieve(callback);
 	return SUCCESS;

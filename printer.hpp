@@ -311,61 +311,84 @@ template <class P, class C> void print_message(Context& context, const C& color,
 	print_impl(p, context);
 	context.print('\n');
 }
-template <class P, class C> void print_message(Context& context, const char* path, const StringView& source, std::size_t source_position, const C& color, const char* severity, const P& p) {
+template <class P, class C> void print_message(Context& context, const char* path, const StringView& source, SourceLocation location, const C& color, const char* severity, const P& p) {
+	location.begin = std::min(location.begin, source.size());
+	location.end = std::min(location.end, source.size());
 	unsigned int line_number = 1;
-	const char* c = source.begin();
-	const char* end = source.end();
-	const char* position = std::min(c + source_position, end);
-	const char* line_start = c;
-	while (c < position) {
-		if (*c == '\n') {
+	std::size_t line_start = 0;
+	std::size_t i;
+	for (i = 0; i < location.begin; ++i) {
+		if (source[i] == '\n') {
 			++line_number;
-			line_start = c + 1;
+			line_start = i + 1;
 		}
-		++c;
 	}
-	const unsigned int column = 1 + (c - line_start);
-	const unsigned int line_number_width = print_number(line_number).get_width();
+	const unsigned int first_line_number = line_number;
+	const unsigned int column = i - line_start + 1;
+	for (; i < location.end; ++i) {
+		if (source[i] == '\n') {
+			++line_number;
+		}
+	}
+	const unsigned int last_line_number = line_number;
+	const unsigned int line_number_width = print_number(last_line_number).get_width();
 
 	print_message(context, color, severity, p);
 
-	print_impl(ln(format(" %--> %:%:%:", repeat(' ', line_number_width), path, print_number(line_number), print_number(column))), context);
+	print_impl(ln(format(" %--> %:%:%:", repeat(' ', line_number_width), path, print_number(first_line_number), print_number(column))), context);
 
 	print_impl(ln(format(" % |", repeat(' ', line_number_width))), context);
 
-	print_impl(format(" % | ", print_number(line_number)), context);
-	c = line_start;
-	while (c < end && *c != '\n') {
-		context.print(*c);
-		++c;
-	}
-	context.print('\n');
+	for (line_number = first_line_number; line_number <= last_line_number; ++line_number) {
+		if (line_number == first_line_number || line_number == last_line_number) {
 
-	print_impl(format(" % | ", repeat(' ', line_number_width)), context);
-	c = line_start;
-	while (c < position) {
-		context.print(*c == '\t' ? '\t' : ' ');
-		++c;
+			const unsigned int width_diff = line_number_width - print_number(line_number).get_width();
+			print_impl(format(" % | ", print_tuple(repeat(' ', width_diff), print_number(line_number))), context);
+			for (i = line_start; i < source.size() && source[i] != '\n'; ++i) {
+				context.print(source[i]);
+			}
+			context.print('\n');
+
+			print_impl(format(" % | ", repeat(' ', line_number_width)), context);
+			for (i = line_start; i < location.end && source[i] != '\n'; ++i) {
+				if (source[i] == '\t') {
+					context.print('\t');
+				}
+				else if (i < location.begin) {
+					context.print(' ');
+				}
+				else {
+					print_impl(bold(color('^')), context);
+				}
+			}
+			context.print('\n');
+
+		}
+		else {
+			if (line_number == first_line_number + 1) {
+				print_impl(ln(format(" %...", repeat(' ', line_number_width))), context);
+			}
+		}
+		for (i = line_start; i < source.size() && source[i] != '\n'; ++i) {}
+		line_start = i + 1;
 	}
-	print_impl(bold(color('^')), context);
-	context.print('\n');
 }
-inline void print_error(const char* path, std::size_t source_position, const std::string& message) {
+inline void print_error(const char* path, const SourceLocation& location, const std::string& message) {
 	Context context(std::cerr);
 	if (path == nullptr) {
 		print_message(context, red, "error", get_printer(message));
 		return;
 	}
 	auto source = read_file(path);
-	print_message(context, path, StringView(source.data(), source.size()), source_position, red, "error", get_printer(message));
+	print_message(context, path, StringView(source.data(), source.size()), location, red, "error", get_printer(message));
 }
-inline void print_error(const char* path, const StringView& source, std::size_t source_position, const std::string& message) {
+inline void print_error(const char* path, const StringView& source, const SourceLocation& location, const std::string& message) {
 	Context context(std::cerr);
-	print_message(context, path, source, source_position, red, "error", get_printer(message));
+	print_message(context, path, source, location, red, "error", get_printer(message));
 }
-inline void print_warning(const char* path, const StringView& source, std::size_t source_position, const std::string& message) {
+inline void print_warning(const char* path, const StringView& source, const SourceLocation& location, const std::string& message) {
 	Context context(std::cerr);
-	print_message(context, path, source, source_position, yellow, "warning", get_printer(message));
+	print_message(context, path, source, location, yellow, "warning", get_printer(message));
 }
 
 }

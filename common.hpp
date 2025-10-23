@@ -228,3 +228,11 @@ inline std::vector<char> read_file(const char* path) {
 	std::ifstream file(path);
 	return std::vector<char>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
+
+class SourceLocation {
+public:
+	std::size_t begin;
+	std::size_t end;
+	constexpr SourceLocation(std::size_t location): begin(location), end(location + 1) {}
+	constexpr SourceLocation(std::size_t begin, std::size_t end): begin(begin), end(end) {}
+};

@@ -41,6 +41,12 @@ public:
 	constexpr StringView operator -(SavePoint save_point) const {
 		return StringView(save_point, position - save_point);
 	}
+	constexpr SourceLocation get_location() const {
+		return SourceLocation(position - begin);
+	}
+	constexpr SourceLocation get_location(SavePoint save_point) const {
+		return SourceLocation(save_point - begin, position - begin);
+	}
 	constexpr StringView get_source() const {
 		return StringView(begin, end - begin);
 	}
@@ -169,6 +175,7 @@ class IgnoreCallback {
 public:
 	constexpr IgnoreCallback() {}
 	template <class... A> constexpr void push(A&&...) const {}
+	constexpr void set_location(const SourceLocation&) const {}
 	template <class C> constexpr void retrieve(const C& callback) const {}
 	template <class C, class... A> static constexpr void map(const C& callback, A&&...) {}
 };
@@ -389,6 +396,7 @@ template <class T, class P, class C> Result parse_impl(const Map<T, P>& p, Conte
 
 template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, Context& context, const C& callback) {
 	T collector;
+	const SavePoint save_point = context.save();
 	const Result result = parse_impl(p.p, context, CollectCallback<T>(collector));
 	if (result == ERROR) {
 		return ERROR;
@@ -396,6 +404,7 @@ template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, C
 	if (result == FAILURE) {
 		return FAILURE;
 	}
+	collector.set_location(context.get_location(save_point));
 	collector.retrieve(callback);
 	return SUCCESS;
 }
