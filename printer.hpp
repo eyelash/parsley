@@ -313,7 +313,7 @@ template <class P, class C> void print_message(Context& context, const C& color,
 }
 template <class P, class C> void print_message(Context& context, const char* path, const StringView& source, SourceLocation location, const C& color, const char* severity, const P& p) {
 	location.begin = std::min(location.begin, source.size());
-	location.end = std::min(location.end, source.size());
+	location.end = std::min(location.end, source.size() + 1);
 	unsigned int line_number = 1;
 	std::size_t line_start = 0;
 	std::size_t i;
@@ -325,7 +325,7 @@ template <class P, class C> void print_message(Context& context, const char* pat
 	}
 	const unsigned int first_line_number = line_number;
 	const unsigned int column = i - line_start + 1;
-	for (; i < location.end; ++i) {
+	for (; i + 1 < location.end; ++i) {
 		if (source[i] == '\n') {
 			++line_number;
 		}
@@ -350,16 +350,14 @@ template <class P, class C> void print_message(Context& context, const char* pat
 			context.print('\n');
 
 			print_impl(format(" % | ", repeat(' ', line_number_width)), context);
-			for (i = line_start; i < location.end && source[i] != '\n'; ++i) {
-				if (source[i] == '\t') {
-					context.print('\t');
-				}
-				else if (i < location.begin) {
-					context.print(' ');
-				}
-				else {
-					print_impl(bold(color('^')), context);
-				}
+			for (i = line_start; i < location.begin; ++i) {
+				context.print(source[i] == '\t' ? '\t' : ' ');
+			}
+			for (; i + 1 < location.end && source[i] != '\n'; ++i) {
+				print_impl(bold(color('^')), context);
+			}
+			if (i == location.begin || i + 1 == location.end) {
+				print_impl(bold(color('^')), context);
 			}
 			context.print('\n');
 
