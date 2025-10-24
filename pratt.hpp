@@ -204,8 +204,11 @@ template <class T, class... P, class L, class C> Result parse_pratt(const Pratt<
 	T collector;
 	const SavePoint save_point = context.save();
 	const Result result = parse_nud(pratt, pratt, context, CollectCallback<T>(collector));
-	if (result != SUCCESS) {
-		return result;
+	if (result == ERROR) {
+		return ERROR;
+	}
+	if (result == FAILURE) {
+		return FAILURE;
 	}
 	collector.set_location(context.get_location(save_point));
 	while (true) {

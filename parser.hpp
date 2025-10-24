@@ -38,7 +38,7 @@ public:
 	void restore(SavePoint save_point) {
 		position = save_point;
 	}
-	constexpr StringView operator -(SavePoint save_point) const {
+	constexpr StringView get_string(SavePoint save_point) const {
 		return StringView(save_point, position - save_point);
 	}
 	constexpr SourceLocation get_location() const {
@@ -49,9 +49,6 @@ public:
 	}
 	constexpr StringView get_source() const {
 		return StringView(begin, end - begin);
-	}
-	constexpr std::size_t get_position() const {
-		return position - begin;
 	}
 };
 
@@ -297,7 +294,7 @@ constexpr Error_ error(const StringView& s) {
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);
 }
-template <class T> constexpr auto reference() {
+template <class T> constexpr Reference_<T> reference() {
 	return Reference_<T>();
 }
 
@@ -327,7 +324,7 @@ template <class C> Result parse_impl(const StringView& s, Context& context, cons
 		}
 		++context;
 	}
-	callback.push(context - save_point);
+	callback.push(context.get_string(save_point));
 	return SUCCESS;
 }
 
@@ -406,7 +403,7 @@ template <class P, class C> Result parse_impl(const ToString<P>& p, Context& con
 	if (result == FAILURE) {
 		return FAILURE;
 	}
-	callback.push(context - save_point);
+	callback.push(context.get_string(save_point));
 	return SUCCESS;
 }
 
