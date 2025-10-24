@@ -207,6 +207,14 @@ public:
 	}
 };
 
+class IdentityMapper {
+public:
+	constexpr IdentityMapper() {}
+	template <class C, class... A> static void map(const C& callback, A&&... a) {
+		callback.push(std::forward<A>(a)...);
+	}
+};
+
 template <class T> class TagMapper {
 public:
 	constexpr TagMapper() {}
