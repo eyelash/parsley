@@ -154,6 +154,12 @@ public:
 	constexpr Collect(P p): p(p) {}
 };
 
+template <class P> class CollectLocation {
+public:
+	P p;
+	constexpr CollectLocation(P p): p(p) {}
+};
+
 class Error_ {
 public:
 	StringView s;
@@ -204,6 +210,9 @@ public:
 	constexpr CollectCallback(T& collector): collector(collector) {}
 	template <class... A> void push(A&&... a) const {
 		collector.push(std::forward<A>(a)...);
+	}
+	void set_location(const SourceLocation& location) const {
+		collector.set_location(location);
 	}
 };
 
@@ -275,6 +284,9 @@ template <class T, class P> constexpr Map<T, P> map(P p) {
 }
 template <class T, class P> constexpr Collect<T, P> collect(P p) {
 	return Collect<T, P>(p);
+}
+template <class P> constexpr CollectLocation<P> collect_location(P p) {
+	return CollectLocation<P>(p);
 }
 template <class T, class P> constexpr auto tag(P p) {
 	return map<TagMapper<T>>(p);
@@ -404,7 +416,6 @@ template <class T, class P, class C> Result parse_impl(const Map<T, P>& p, Conte
 
 template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, Context& context, const C& callback) {
 	T collector;
-	const SavePoint save_point = context.save();
 	const Result result = parse_impl(p.p, context, CollectCallback<T>(collector));
 	if (result == ERROR) {
 		return ERROR;
@@ -412,8 +423,20 @@ template <class T, class P, class C> Result parse_impl(const Collect<T, P>& p, C
 	if (result == FAILURE) {
 		return FAILURE;
 	}
-	collector.set_location(context.get_location(save_point));
 	collector.retrieve(callback);
+	return SUCCESS;
+}
+
+template <class P, class C> Result parse_impl(const CollectLocation<P>& p, Context& context, const C& callback) {
+	const SavePoint save_point = context.save();
+	const Result result = parse_impl(p.p, context, callback);
+	if (result == ERROR) {
+		return ERROR;
+	}
+	if (result == FAILURE) {
+		return FAILURE;
+	}
+	callback.set_location(context.get_location(save_point));
 	return SUCCESS;
 }
 
