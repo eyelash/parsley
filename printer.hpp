@@ -342,23 +342,45 @@ template <class P, class C> void print_message(Context& context, const char* pat
 	for (line_number = first_line_number; line_number <= last_line_number; ++line_number) {
 		if (line_number == first_line_number || line_number == last_line_number) {
 
+			constexpr unsigned int TAB_WIDTH = 4;
 			const unsigned int width_diff = line_number_width - print_number(line_number).get_width();
+
 			print_impl(format(" % | ", print_tuple(repeat(' ', width_diff), print_number(line_number))), context);
+			unsigned int column = 0;
 			for (i = line_start; i < source.size() && source[i] != '\n'; ++i) {
-				context.print(source[i]);
+				if (source[i] == '\t') {
+					const unsigned int char_width = TAB_WIDTH - column % TAB_WIDTH;
+					print_impl(repeat(' ', char_width), context);
+					column += char_width;
+				}
+				else {
+					context.print(source[i]);
+					++column;
+				}
 			}
 			context.print('\n');
 
 			print_impl(format(" % | ", repeat(' ', line_number_width)), context);
-			for (i = line_start; i < location.begin; ++i) {
-				context.print(source[i] == '\t' ? '\t' : ' ');
-			}
-			for (; i + 1 < location.end && source[i] != '\n'; ++i) {
-				print_impl(bold(color('^')), context);
+			unsigned int spaces = 0;
+			unsigned int carets = 0;
+			column = 0;
+			for (i = line_start; i + 1 < location.end && source[i] != '\n'; ++i) {
+				unsigned int char_width = 1;
+				if (source[i] == '\t') {
+					char_width = TAB_WIDTH - column % TAB_WIDTH;
+				}
+				if (i < location.begin) {
+					spaces += char_width;
+				}
+				else {
+					carets += char_width;
+				}
+				column += char_width;
 			}
 			if (i == location.begin || i + 1 == location.end) {
-				print_impl(bold(color('^')), context);
+				++carets;
 			}
+			print_impl(print_tuple(repeat(' ', spaces), bold(color(repeat('^', carets)))), context);
 			context.print('\n');
 
 		}
