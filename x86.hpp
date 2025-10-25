@@ -133,6 +133,18 @@ public:
 		MR(dst, 0);
 		write<std::uint32_t>(imm);
 	}
+	void XCHG(Register dst, Register src) {
+		opcode(0x87);
+		RM(dst, src);
+	}
+	void XCHG(Register dst, Address src) {
+		opcode(0x87);
+		RM(dst, src);
+	}
+	void XCHG(Address dst, Register src) {
+		opcode(0x87);
+		MR(dst, src);
+	}
 	void LEA(Register dst, Address src) {
 		opcode(0x8D);
 		RM(dst, src);
