@@ -145,6 +145,24 @@ public:
 		opcode(0x87);
 		MR(dst, src);
 	}
+	void PUSH(Register src) {
+		opcode(0x50 | src);
+	}
+	void PUSH(Address src) {
+		opcode(0xFF);
+		RM(6, src);
+	}
+	void PUSH(std::uint32_t imm) {
+		opcode(0x68);
+		write<std::uint32_t>(imm);
+	}
+	void POP(Register dst) {
+		opcode(0x58 | dst);
+	}
+	void POP(Address dst) {
+		opcode(0x8F);
+		RM(0, dst);
+	}
 	void ADD(Register dst, Register src) {
 		opcode(0x03);
 		RM(dst, src);
