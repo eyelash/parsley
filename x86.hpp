@@ -105,9 +105,33 @@ class Assembler {
 			}
 		}
 	}
+	void MR(Address op1, std::uint8_t op2) {
+		RM(op2, op1);
+	}
 public:
 	const std::vector<char>& get_data() const {
 		return data;
+	}
+	void MOV(Register dst, Register src) {
+		opcode(0x8B);
+		RM(dst, src);
+	}
+	void MOV(Register dst, Address src) {
+		opcode(0x8B);
+		RM(dst, src);
+	}
+	void MOV(Address dst, Register src) {
+		opcode(0x89);
+		MR(dst, src);
+	}
+	void MOV(Register dst, std::uint32_t imm) {
+		opcode(0xB8 | dst);
+		write<std::uint32_t>(imm);
+	}
+	void MOV(Address dst, std::uint32_t imm) {
+		opcode(0xC7);
+		MR(dst, 0);
+		write<std::uint32_t>(imm);
 	}
 	void LEA(Register dst, Address src) {
 		opcode(0x8D);
