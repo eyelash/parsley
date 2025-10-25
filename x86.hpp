@@ -130,7 +130,7 @@ public:
 	}
 	void MOV(Address dst, std::uint32_t imm) {
 		opcode(0xC7);
-		MR(dst, 0);
+		RM(0, dst);
 		write<std::uint32_t>(imm);
 	}
 	void XCHG(Register dst, Register src) {
@@ -144,6 +144,64 @@ public:
 	void XCHG(Address dst, Register src) {
 		opcode(0x87);
 		MR(dst, src);
+	}
+	void ADD(Register dst, Register src) {
+		opcode(0x03);
+		RM(dst, src);
+	}
+	void ADD(Register dst, Address src) {
+		opcode(0x03);
+		RM(dst, src);
+	}
+	void ADD(Address dst, Register src) {
+		opcode(0x01);
+		MR(dst, src);
+	}
+	void ADD(Register dst, std::uint32_t imm) {
+		opcode(0x81);
+		RM(0, dst);
+		write<std::uint32_t>(imm);
+	}
+	void ADD(Address dst, std::uint32_t imm) {
+		opcode(0x81);
+		RM(0, dst);
+		write<std::uint32_t>(imm);
+	}
+	void SUB(Register dst, Register src) {
+		opcode(0x2B);
+		RM(dst, src);
+	}
+	void SUB(Register dst, Address src) {
+		opcode(0x2B);
+		RM(dst, src);
+	}
+	void SUB(Address dst, Register src) {
+		opcode(0x29);
+		MR(dst, src);
+	}
+	void SUB(Register dst, std::uint32_t imm) {
+		opcode(0x81);
+		RM(5, dst);
+		write<std::uint32_t>(imm);
+	}
+	void SUB(Address dst, std::uint32_t imm) {
+		opcode(0x81);
+		RM(5, dst);
+		write<std::uint32_t>(imm);
+	}
+	void INC(Register dst) {
+		opcode(0x40 | dst);
+	}
+	void INC(Address dst) {
+		opcode(0xFF);
+		RM(0, dst);
+	}
+	void DEC(Register dst) {
+		opcode(0x48 | dst);
+	}
+	void DEC(Address dst) {
+		opcode(0xFF);
+		RM(1, dst);
 	}
 	void LEA(Register dst, Address src) {
 		opcode(0x8D);
