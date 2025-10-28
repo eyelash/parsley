@@ -225,6 +225,10 @@ public:
 		opcode(0x8D);
 		RM(dst, src);
 	}
+	void INT(std::uint8_t imm) {
+		opcode(0xCD);
+		write<std::uint8_t>(imm);
+	}
 };
 
 }
