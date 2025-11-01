@@ -38,22 +38,6 @@ public:
 template <class P, class = void> struct is_printer: std::false_type {};
 template <class P> struct is_printer<P, decltype(std::declval<const P&>().print(std::declval<Context&>()))>: std::true_type {};
 
-constexpr char get_printer(char c) {
-	return c;
-}
-constexpr StringView get_printer(const StringView& s) {
-	return StringView(s);
-}
-constexpr const char* get_printer(const char* s) {
-	return s;
-}
-inline StringView get_printer(const std::string& s) {
-	return StringView(s);
-}
-template <class P> constexpr P get_printer(P p) {
-	return p;
-}
-
 inline void print_impl(char c, Context& context) {
 	context.print(c);
 }
@@ -68,6 +52,8 @@ inline void print_impl(const char* s, Context& context) {
 	print_impl(StringView(s), context);
 }
 
+inline void print_impl(const std::string& s, Context& context) = delete;
+
 template <class P> std::enable_if_t<is_printer<P>::value> print_impl(const P& p, Context& context) {
 	p.print(context);
 }
@@ -81,8 +67,8 @@ public:
 		context.print('\n');
 	}
 };
-template <class P> constexpr auto ln(P&& p) {
-	return Ln(get_printer(std::forward<P>(p)));
+template <class P> constexpr Ln<P> ln(P p) {
+	return Ln<P>(p);
 }
 constexpr char ln() {
 	return '\n';
@@ -98,8 +84,8 @@ public:
 		context.decrease_indentation();
 	}
 };
-template <class P> constexpr auto indented(P&& p) {
-	return Indent(get_printer(std::forward<P>(p)));
+template <class P> constexpr Indent<P> indented(P p) {
+	return Indent<P>(p);
 }
 
 template <class F> class PrintFunctor {
@@ -120,7 +106,7 @@ public:
 	constexpr PrintTuple() {}
 	void print(Context& context) const {}
 	void print_formatted(Context& context, const char* s) const {
-		print_impl(get_printer(s), context);
+		print_impl(s, context);
 	}
 };
 template <class T0, class... T> class PrintTuple<T0, T...> {
@@ -147,9 +133,8 @@ public:
 		}
 	}
 };
-template <class... T> PrintTuple(T...) -> PrintTuple<T...>;
-template <class... T> constexpr auto print_tuple(T&&... t) {
-	return PrintTuple(get_printer(std::forward<T>(t))...);
+template <class... T> constexpr PrintTuple<T...> print_tuple(T... t) {
+	return PrintTuple<T...>(t...);
 }
 
 template <class... T> class Format {
@@ -161,8 +146,8 @@ public:
 		t.print_formatted(context, s);
 	}
 };
-template <class... T> constexpr auto format(const char* s, T&&... t) {
-	return Format(s, get_printer(std::forward<T>(t))...);
+template <class... T> constexpr Format<T...> format(const char* s, T... t) {
+	return Format<T...>(s, t...);
 }
 
 template <class T> constexpr auto bold(T&& t) {
@@ -288,8 +273,8 @@ public:
 		}
 	}
 };
-template <class P> constexpr auto repeat(P&& p, unsigned int count) {
-	return Repeat(get_printer(std::forward<P>(p)), count);
+template <class P> constexpr Repeat<P> repeat(P p, unsigned int count) {
+	return Repeat<P>(p, count);
 }
 
 class Plural {
@@ -397,29 +382,29 @@ template <class P, class C> void print_message(Context& context, const char* pat
 		line_start = i + 1;
 	}
 }
-inline void print_error(const char* path, const SourceLocation& location, const std::string& message) {
+inline void print_error(const char* path, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
 	if (path == nullptr) {
-		print_message(context, red, "error", get_printer(message));
+		print_message(context, red, "error", message);
 		return;
 	}
 	auto source = read_file(path);
-	print_message(context, path, StringView(source.data(), source.size()), location, red, "error", get_printer(message));
+	print_message(context, path, StringView(source.data(), source.size()), location, red, "error", message);
 }
-inline void print_error(const char* path, const StringView& source, const SourceLocation& location, const std::string& message) {
+inline void print_error(const char* path, const StringView& source, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
-	print_message(context, path, source, location, red, "error", get_printer(message));
+	print_message(context, path, source, location, red, "error", message);
 }
-inline void print_warning(const char* path, const StringView& source, const SourceLocation& location, const std::string& message) {
+inline void print_warning(const char* path, const StringView& source, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
-	print_message(context, path, source, location, yellow, "warning", get_printer(message));
+	print_message(context, path, source, location, yellow, "warning", message);
 }
 
 }
 
 template <class P> void print(printer::Context& context, P&& p) {
 	using namespace printer;
-	print_impl(get_printer(std::forward<P>(p)), context);
+	print_impl(std::forward<P>(p), context);
 }
 template <class P> void print(std::ostream& ostream, P&& p) {
 	printer::Context context(ostream);

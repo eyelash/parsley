@@ -29,8 +29,8 @@ public:
 	template <class P> void set_error(P&& p) {
 		error = print_to_string(std::forward<P>(p));
 	}
-	const std::string& get_error() const {
-		return error;
+	StringView get_error() const {
+		return StringView(error);
 	}
 	constexpr SavePoint save() const {
 		return position;
