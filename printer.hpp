@@ -428,6 +428,9 @@ template <class P> void print(std::ostream& ostream, P&& p) {
 template <class P> void print(P&& p) {
 	print(std::cout, std::forward<P>(p));
 }
+template <class P> void println(std::ostream& ostream, P&& p) {
+	print(ostream, printer::ln(std::forward<P>(p)));
+}
 template <class P> void println(P&& p) {
 	print(printer::ln(std::forward<P>(p)));
 }
