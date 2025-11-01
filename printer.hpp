@@ -88,6 +88,18 @@ template <class P> constexpr Indent<P> indented(P p) {
 	return Indent<P>(p);
 }
 
+template <class P> class Reference {
+	const P* p;
+public:
+	constexpr Reference(const P& p): p(&p) {}
+	void print(Context& context) const {
+		print_impl(*p, context);
+	}
+};
+template <class P> constexpr Reference<P> ref(const P& p) {
+	return Reference<P>(p);
+}
+
 template <class F> class PrintFunctor {
 	F f;
 public:
