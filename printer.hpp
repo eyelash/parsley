@@ -44,8 +44,8 @@ constexpr char get_printer(char c) {
 constexpr StringView get_printer(const StringView& s) {
 	return StringView(s);
 }
-constexpr StringView get_printer(const char* s) {
-	return StringView(s);
+constexpr const char* get_printer(const char* s) {
+	return s;
 }
 inline StringView get_printer(const std::string& s) {
 	return StringView(s);
@@ -62,6 +62,10 @@ inline void print_impl(const StringView& s, Context& context) {
 	for (char c: s) {
 		context.print(c);
 	}
+}
+
+inline void print_impl(const char* s, Context& context) {
+	print_impl(StringView(s), context);
 }
 
 template <class P> std::enable_if_t<is_printer<P>::value> print_impl(const P& p, Context& context) {
@@ -296,7 +300,7 @@ public:
 	void print(Context& context) const {
 		print_impl(print_number(count), context);
 		context.print(' ');
-		print_impl(get_printer(word), context);
+		print_impl(word, context);
 		if (count != 1) {
 			context.print('s');
 		}
