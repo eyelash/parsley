@@ -140,6 +140,9 @@ public:
 	constexpr bool ends_with(const StringView& s) const {
 		return length < s.length ? false : memcmp(string + length - s.length, s.string, s.length) == 0;
 	}
+	std::string to_string() const {
+		return std::string(string, length);
+	}
 };
 
 inline std::uint32_t next_codepoint(StringView& s) {
