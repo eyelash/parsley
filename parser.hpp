@@ -483,3 +483,15 @@ template <class T, class C> Result parse_impl(const Reference_<T>& p, Context& c
 }
 
 }
+
+template <class P, class C> parser::Result parse(parser::Context& context, P&& p, const C& callback) {
+	using namespace parser;
+	return parse_impl(std::forward<P>(p), context, callback);
+}
+template <class P> parser::Result parse(parser::Context& context, P&& p) {
+	return parse(context, std::forward<P>(p), parser::IgnoreCallback());
+}
+template <class P> parser::Result parse(const StringView& s, P&& p) {
+	parser::Context context(s);
+	return parse(context, std::forward<P>(p));
+}
