@@ -10,19 +10,32 @@ template <class P> static constexpr auto op(P p) {
 	return sequence(white_space, ignore(p), white_space);
 }
 
-enum Operation {
-	ADD,
-	SUB,
-	MUL,
-	DIV
-};
+static unsigned int add(unsigned int lhs, unsigned int rhs) {
+	return lhs + rhs;
+}
+static unsigned int subtract(unsigned int lhs, unsigned int rhs) {
+	return lhs - rhs;
+}
+static unsigned int multiply(unsigned int lhs, unsigned int rhs) {
+	return lhs * rhs;
+}
+static unsigned int divide(unsigned int lhs, unsigned int rhs) {
+	return lhs / rhs;
+}
+static unsigned int negate(unsigned int x) {
+	return -x;
+}
 
-template <int> class OpTag {
+using BinaryOperation = unsigned int (*)(unsigned int, unsigned int);
+using UnaryOperation = unsigned int (*)(unsigned int);
+
+template <BinaryOperation> class BinaryOperationTag {
 public:
-	constexpr OpTag() {}
-	template <class C, class... A> static void map(const C& callback, A&&... a) {
-		callback.push(std::forward<A>(a)..., OpTag());
-	}
+	constexpr BinaryOperationTag() {}
+};
+template <UnaryOperation> class UnaryOperationTag {
+public:
+	constexpr UnaryOperationTag() {}
 };
 
 class IntCollector {
@@ -35,17 +48,8 @@ public:
 	void push(unsigned int n) {
 		this->n = n;
 	}
-	void push(unsigned int n, OpTag<ADD>) {
-		this->n += n;
-	}
-	void push(unsigned int n, OpTag<SUB>) {
-		this->n -= n;
-	}
-	void push(unsigned int n, OpTag<MUL>) {
-		this->n *= n;
-	}
-	void push(unsigned int n, OpTag<DIV>) {
-		this->n /= n;
+	template <BinaryOperation operation> void push(unsigned int n, BinaryOperationTag<operation>) {
+		this->n = operation(this->n, n);
 	}
 	void set_location(const SourceLocation& location) {}
 	template <class C> void retrieve(const C& callback) {
@@ -55,27 +59,29 @@ public:
 
 constexpr auto number = collect<IntCollector>(one_or_more(range('0', '9')));
 
-struct Expression;
-constexpr auto expression = reference<Expression>();
-struct Expression {
-	static constexpr auto parser = pratt<IntCollector>(
-		pratt_level(
-			infix_ltr<OpTag<ADD>>(op('+')),
-			infix_ltr<OpTag<SUB>>(op('-'))
-		),
-		pratt_level(
-			infix_ltr<OpTag<MUL>>(op('*')),
-			infix_ltr<OpTag<DIV>>(op('/'))
-		),
-		pratt_level(
-			terminal(choice(
-				number,
-				sequence(ignore('('), white_space, expression, white_space, expect(")")),
-				error("expected an expression")
-			))
-		)
-	);
+struct expression_t;
+constexpr auto expression = reference<expression_t>();
+constexpr auto expression_impl = pratt<IntCollector>(
+	pratt_level(
+		infix_ltr<TagMapper<BinaryOperationTag<add>>>(op('+')),
+		infix_ltr<TagMapper<BinaryOperationTag<subtract>>>(op('-'))
+	),
+	pratt_level(
+		infix_ltr<TagMapper<BinaryOperationTag<multiply>>>(op('*')),
+		infix_ltr<TagMapper<BinaryOperationTag<divide>>>(op('/'))
+	),
+	pratt_level(
+		terminal(choice(
+			number,
+			sequence(ignore('('), white_space, expression, white_space, expect(")")),
+			error("expected an expression")
+		))
+	)
+);
+struct expression_t {
+	static constexpr auto parser = expression_impl;
 };
+constexpr decltype(expression_impl) expression_t::parser;
 
 constexpr auto program = sequence(
 	white_space,
