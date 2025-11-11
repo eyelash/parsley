@@ -109,7 +109,7 @@ public:
 	}
 };
 template <class F> constexpr PrintFunctor<F> print_functor(F f) {
-	return PrintFunctor(f);
+	return PrintFunctor<F>(f);
 }
 
 template <class... T> class PrintTuple;
