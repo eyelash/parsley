@@ -230,6 +230,30 @@ public:
 	}
 };
 
+template <class... T> class TupleCollector;
+template <> class TupleCollector<> {
+public:
+	constexpr TupleCollector() {}
+	template <class C, class... A> void retrieve(const C& callback, A&&... a) {
+		callback.push(std::forward<A>(a)...);
+	}
+};
+template <class T0, class... T> class TupleCollector<T0, T...> {
+	T0 head;
+	TupleCollector<T...> tail;
+public:
+	TupleCollector() {}
+	void push(T0&& head) {
+		this->head = std::move(head);
+	}
+	template <class A> void push(A&& a) {
+		tail.push(std::forward<A>(a));
+	}
+	template <class C, class... A> void retrieve(const C& callback, A&&... a) {
+		tail.retrieve(callback, std::forward<A>(a)..., std::move(head));
+	}
+};
+
 template <class F> constexpr CharClass<F> char_class(F f) {
 	return CharClass<F>(f);
 }
