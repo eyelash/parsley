@@ -79,9 +79,10 @@ constexpr auto expression_impl = pratt<IntCollector>(
 	)
 );
 struct expression_t {
-	static constexpr auto parser = expression_impl;
+	static constexpr auto& get_parser() {
+		return expression_impl;
+	}
 };
-constexpr decltype(expression_impl) expression_t::parser;
 
 constexpr auto program = sequence(
 	white_space,

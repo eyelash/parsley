@@ -489,7 +489,7 @@ template <class C> Result parse_impl(const Expect& p, Context& context, const C&
 }
 
 template <class T, class C> Result parse_impl(const Reference_<T>& p, Context& context, const C& callback) {
-	return parse_impl(T::parser, context, callback);
+	return parse_impl(T::get_parser(), context, callback);
 }
 
 }
