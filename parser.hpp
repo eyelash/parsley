@@ -253,6 +253,17 @@ public:
 	}
 };
 
+template <class T> class VectorCollector {
+	std::vector<T> vector;
+public:
+	void push(T&& t) {
+		vector.push_back(std::move(t));
+	}
+	template <class C> void retrieve(const C& callback) {
+		callback.push(std::move(vector));
+	}
+};
+
 template <class F> constexpr CharClass<F> char_class(F f) {
 	return CharClass<F>(f);
 }
