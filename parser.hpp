@@ -3,6 +3,9 @@
 #include "common.hpp"
 #include "printer.hpp"
 
+#define DECLARE_PARSER(name) struct name##_t; constexpr auto name = parser::reference<name##_t>();
+#define DEFINE_PARSER(name, impl) struct name##_t { static constexpr auto get_parser() -> decltype(impl)& { return impl; } };
+
 namespace parser {
 
 using SavePoint = const char*;

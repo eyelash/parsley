@@ -59,8 +59,7 @@ public:
 
 constexpr auto number = collect<IntCollector>(one_or_more(range('0', '9')));
 
-struct expression_t;
-constexpr auto expression = reference<expression_t>();
+DECLARE_PARSER(expression)
 constexpr auto expression_impl = pratt<IntCollector>(
 	pratt_level(
 		infix_ltr<TagMapper<BinaryOperationTag<add>>>(op('+')),
@@ -78,11 +77,7 @@ constexpr auto expression_impl = pratt<IntCollector>(
 		))
 	)
 );
-struct expression_t {
-	static constexpr auto& get_parser() {
-		return expression_impl;
-	}
-};
+DEFINE_PARSER(expression, expression_impl)
 
 constexpr auto program = sequence(
 	white_space,
