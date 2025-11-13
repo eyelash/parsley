@@ -57,17 +57,7 @@ public:
 	}
 };
 
-template <BinaryOperation operation> class InfixCollector {
-	unsigned int n;
-public:
-	InfixCollector(): n(0) {}
-	void push(unsigned int n) {
-		this->n = n;
-	}
-	template <class C> void retrieve(const C& callback) {
-		callback.push(n, BinaryOperationTag<operation>());
-	}
-};
+template <BinaryOperation operation> using InfixCollector = MapCollector<TagMapper<BinaryOperationTag<operation>>, TupleCollector<unsigned int>>;
 
 constexpr auto number = collect<IntCollector>(one_or_more(range('0', '9')));
 

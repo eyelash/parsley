@@ -245,10 +245,10 @@ template <class T0, class... T> class TupleCollector<T0, T...> {
 	TupleCollector<T...> tail;
 public:
 	TupleCollector() {}
-	void push(T0&& head) {
-		this->head = std::move(head);
+	template <class A> std::enable_if_t<std::is_assignable<T0&, A>::value> push(A&& a) {
+		head = std::forward<A>(a);
 	}
-	template <class A> void push(A&& a) {
+	template <class A> std::enable_if_t<!std::is_assignable<T0&, A>::value> push(A&& a) {
 		tail.push(std::forward<A>(a));
 	}
 	template <class C, class... A> void retrieve(const C& callback, A&&... a) {
@@ -264,6 +264,18 @@ public:
 	}
 	template <class C> void retrieve(const C& callback) {
 		callback.push(std::move(vector));
+	}
+};
+
+template <class Mapper, class Collector> class MapCollector {
+	Collector collector;
+public:
+	constexpr MapCollector() {}
+	template <class... A> void push(A&&... a) {
+		collector.push(std::forward<A>(a)...);
+	}
+	template <class C> void retrieve(const C& callback) {
+		collector.retrieve(MapCallback<Mapper, C>(callback));
 	}
 };
 
