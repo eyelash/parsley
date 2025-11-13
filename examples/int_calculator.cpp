@@ -57,17 +57,29 @@ public:
 	}
 };
 
+template <BinaryOperation operation> class InfixCollector {
+	unsigned int n;
+public:
+	InfixCollector(): n(0) {}
+	void push(unsigned int n) {
+		this->n = n;
+	}
+	template <class C> void retrieve(const C& callback) {
+		callback.push(n, BinaryOperationTag<operation>());
+	}
+};
+
 constexpr auto number = collect<IntCollector>(one_or_more(range('0', '9')));
 
 DECLARE_PARSER(expression)
 constexpr auto expression_impl = pratt<IntCollector>(
 	pratt_level(
-		infix_ltr<TagMapper<BinaryOperationTag<add>>>(op('+')),
-		infix_ltr<TagMapper<BinaryOperationTag<subtract>>>(op('-'))
+		infix_ltr<InfixCollector<add>>(op('+')),
+		infix_ltr<InfixCollector<subtract>>(op('-'))
 	),
 	pratt_level(
-		infix_ltr<TagMapper<BinaryOperationTag<multiply>>>(op('*')),
-		infix_ltr<TagMapper<BinaryOperationTag<divide>>>(op('/'))
+		infix_ltr<InfixCollector<multiply>>(op('*')),
+		infix_ltr<InfixCollector<divide>>(op('/'))
 	),
 	pratt_level(
 		terminal(choice(

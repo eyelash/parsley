@@ -105,15 +105,16 @@ template <class P, class L, class Op_T, class... Op, class C> Result parse_nud(c
 }
 template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result parse_nud(const P& pratt, const L& level, const PrattLevel<Prefix<Op_T, Op_P>, Op...>& op, Context& context, const C& callback) {
 	// Prefix
+	Op_T collector;
 	const SavePoint save_point = context.save();
-	Result result = parse_impl(op.head.p, context, callback);
+	Result result = parse_impl(op.head.p, context, CollectCallback<Op_T>(collector));
 	if (result == ERROR) {
 		return ERROR;
 	}
 	if (result == FAILURE) {
 		return parse_nud(pratt, level, op.tail, context, callback);
 	}
-	result = parse_pratt(pratt, level, context, MapCallback<Op_T, C>(callback));
+	result = parse_pratt(pratt, level, context, CollectCallback<Op_T>(collector));
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -121,6 +122,7 @@ template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result
 		context.restore(save_point);
 		return FAILURE;
 	}
+	collector.retrieve(callback);
 	return SUCCESS;
 }
 
@@ -142,15 +144,16 @@ template <class P, class L, class Op0, class... Op, class C> Result parse_led(co
 }
 template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result parse_led(const P& pratt, const L& level, const PrattLevel<InfixLTR<Op_T, Op_P>, Op...>& op, Context& context, const C& callback) {
 	// InfixLTR
+	Op_T collector;
 	const SavePoint save_point = context.save();
-	Result result = parse_impl(op.head.p, context, callback);
+	Result result = parse_impl(op.head.p, context, CollectCallback<Op_T>(collector));
 	if (result == ERROR) {
 		return ERROR;
 	}
 	if (result == FAILURE) {
 		return parse_led(pratt, level, op.tail, context, callback);
 	}
-	result = parse_pratt(pratt, level.tail, context, MapCallback<Op_T, C>(callback));
+	result = parse_pratt(pratt, level.tail, context, CollectCallback<Op_T>(collector));
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -158,19 +161,21 @@ template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result
 		context.restore(save_point);
 		return FAILURE;
 	}
+	collector.retrieve(callback);
 	return SUCCESS;
 }
 template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result parse_led(const P& pratt, const L& level, const PrattLevel<InfixRTL<Op_T, Op_P>, Op...>& op, Context& context, const C& callback) {
 	// InfixRTL
+	Op_T collector;
 	const SavePoint save_point = context.save();
-	Result result = parse_impl(op.head.p, context, callback);
+	Result result = parse_impl(op.head.p, context, CollectCallback<Op_T>(collector));
 	if (result == ERROR) {
 		return ERROR;
 	}
 	if (result == FAILURE) {
 		return parse_led(pratt, level, op.tail, context, callback);
 	}
-	result = parse_pratt(pratt, level, context, MapCallback<Op_T, C>(callback));
+	result = parse_pratt(pratt, level, context, CollectCallback<Op_T>(collector));
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -178,18 +183,20 @@ template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result
 		context.restore(save_point);
 		return FAILURE;
 	}
+	collector.retrieve(callback);
 	return SUCCESS;
 }
 template <class P, class L, class Op_T, class Op_P, class... Op, class C> Result parse_led(const P& pratt, const L& level, const PrattLevel<Postfix<Op_T, Op_P>, Op...>& op, Context& context, const C& callback) {
 	// Postfix
-	const Result result = parse_impl(op.head.p, context, callback);
+	Op_T collector;
+	const Result result = parse_impl(op.head.p, context, CollectCallback<Op_T>(collector));
 	if (result == ERROR) {
 		return ERROR;
 	}
 	if (result == FAILURE) {
 		return parse_led(pratt, level, op.tail, context, callback);
 	}
-	Op_T::map(callback);
+	collector.retrieve(callback);
 	return SUCCESS;
 }
 
