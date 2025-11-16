@@ -145,52 +145,52 @@ public:
 	}
 };
 
-inline std::uint32_t next_codepoint(StringView& s) {
-	std::uint32_t codepoint = 0;
+inline std::uint32_t next_code_point(StringView& s) {
+	std::uint32_t code_point = 0;
 	if (s.size() >= 1 && (s[0] & 0b1000'0000) == 0b0000'0000) {
-		codepoint = s[0];
+		code_point = s[0];
 		s = s.substr(1);
 	}
 	else if (s.size() >= 2 && (s[0] & 0b1110'0000) == 0b1100'0000) {
-		codepoint |= (s[0] & 0b0001'1111) << 6;
-		codepoint |= (s[1] & 0b0011'1111);
+		code_point |= (s[0] & 0b0001'1111) << 6;
+		code_point |= (s[1] & 0b0011'1111);
 		s = s.substr(2);
 	}
 	else if (s.size() >= 3 && (s[0] & 0b1111'0000) == 0b1110'0000) {
-		codepoint |= (s[0] & 0b0000'1111) << 12;
-		codepoint |= (s[1] & 0b0011'1111) << 6;
-		codepoint |= (s[2] & 0b0011'1111);
+		code_point |= (s[0] & 0b0000'1111) << 12;
+		code_point |= (s[1] & 0b0011'1111) << 6;
+		code_point |= (s[2] & 0b0011'1111);
 		s = s.substr(3);
 	}
 	else if (s.size() >= 4 && (s[0] & 0b1111'1000) == 0b1111'0000) {
-		codepoint |= (s[0] & 0b0000'0111) << 18;
-		codepoint |= (s[1] & 0b0011'1111) << 12;
-		codepoint |= (s[2] & 0b0011'1111) << 6;
-		codepoint |= (s[3] & 0b0011'1111);
+		code_point |= (s[0] & 0b0000'0111) << 18;
+		code_point |= (s[1] & 0b0011'1111) << 12;
+		code_point |= (s[2] & 0b0011'1111) << 6;
+		code_point |= (s[3] & 0b0011'1111);
 		s = s.substr(4);
 	}
-	return codepoint;
+	return code_point;
 }
 
-inline std::string from_codepoint(std::uint32_t codepoint) {
+inline std::string from_code_point(std::uint32_t code_point) {
 	std::string s;
-	if (codepoint < 0b1000'0000) {
-		s.push_back(codepoint);
+	if (code_point < 0b1000'0000) {
+		s.push_back(code_point);
 	}
-	else if (codepoint < 0b1000'0000'0000) {
-		s.push_back(0b1100'0000 | codepoint >> 6);
-		s.push_back(0b1000'0000 | codepoint & 0b0011'1111);
+	else if (code_point < 0b1000'0000'0000) {
+		s.push_back(0b1100'0000 | code_point >> 6);
+		s.push_back(0b1000'0000 | code_point & 0b0011'1111);
 	}
-	else if (codepoint < 0b0001'0000'0000'0000'0000) {
-		s.push_back(0b1110'0000 | codepoint >> 12);
-		s.push_back(0b1000'0000 | codepoint >> 6 & 0b0011'1111);
-		s.push_back(0b1000'0000 | codepoint & 0b0011'1111);
+	else if (code_point < 0b0001'0000'0000'0000'0000) {
+		s.push_back(0b1110'0000 | code_point >> 12);
+		s.push_back(0b1000'0000 | code_point >> 6 & 0b0011'1111);
+		s.push_back(0b1000'0000 | code_point & 0b0011'1111);
 	}
-	else if (codepoint < 0b0010'0000'0000'0000'0000'0000) {
-		s.push_back(0b1111'0000 | codepoint >> 18);
-		s.push_back(0b1000'0000 | codepoint >> 12 & 0b0011'1111);
-		s.push_back(0b1000'0000 | codepoint >> 6 & 0b0011'1111);
-		s.push_back(0b1000'0000 | codepoint & 0b0011'1111);
+	else if (code_point < 0b0010'0000'0000'0000'0000'0000) {
+		s.push_back(0b1111'0000 | code_point >> 18);
+		s.push_back(0b1000'0000 | code_point >> 12 & 0b0011'1111);
+		s.push_back(0b1000'0000 | code_point >> 6 & 0b0011'1111);
+		s.push_back(0b1000'0000 | code_point & 0b0011'1111);
 	}
 	return s;
 }
@@ -200,18 +200,18 @@ class CodePoints {
 public:
 	class Iterator {
 		StringView s;
-		std::uint32_t codepoint;
+		std::uint32_t code_point;
 	public:
-		Iterator(const StringView& s): s(s), codepoint(next_codepoint(this->s)) {}
-		Iterator(): s(), codepoint(0) {}
+		Iterator(const StringView& s): s(s), code_point(next_code_point(this->s)) {}
+		Iterator(): s(), code_point(0) {}
 		bool operator !=(const Iterator& rhs) const {
-			return codepoint != rhs.codepoint;
+			return code_point != rhs.code_point;
 		}
 		std::uint32_t operator *() const {
-			return codepoint;
+			return code_point;
 		}
 		Iterator& operator ++() {
-			codepoint = next_codepoint(s);
+			code_point = next_code_point(s);
 			return *this;
 		}
 	};

@@ -130,16 +130,16 @@ public:
 	constexpr Not(P p): p(p) {}
 };
 
-template <class P> class Ignore {
+template <class P> class Ignore_ {
 public:
 	P p;
-	constexpr Ignore(P p): p(p) {}
+	constexpr Ignore_(P p): p(p) {}
 };
 
-template <class P> class ToString {
+template <class P> class CollectString {
 public:
 	P p;
-	constexpr ToString(P p): p(p) {}
+	constexpr CollectString(P p): p(p) {}
 };
 
 template <class T, class P> class Map {
@@ -177,9 +177,9 @@ public:
 	constexpr Reference_() {}
 };
 
-class IgnoreCallback {
+class Ignore {
 public:
-	constexpr IgnoreCallback() {}
+	constexpr Ignore() {}
 	template <class... A> constexpr void push(A&&...) const {}
 	constexpr void set_location(const SourceLocation&) const {}
 	template <class C> constexpr void retrieve(const C& callback) const {}
@@ -319,11 +319,11 @@ template <class P> constexpr auto and_(P p) {
 constexpr auto end() {
 	return not_(any_char());
 }
-template <class P> constexpr Ignore<P> ignore(P p) {
-	return Ignore<P>(p);
+template <class P> constexpr Ignore_<P> ignore(P p) {
+	return Ignore_<P>(p);
 }
-template <class P> constexpr ToString<P> to_string(P p) {
-	return ToString<P>(p);
+template <class P> constexpr CollectString<P> collect_string(P p) {
+	return CollectString<P>(p);
 }
 template <class T, class P> constexpr Map<T, P> map(P p) {
 	return Map<T, P>(p);
@@ -428,7 +428,7 @@ template <class P, class C> Result parse_impl(const Repetition<P>& p, Context& c
 
 template <class P, class C> Result parse_impl(const Not<P>& p, Context& context, const C& callback) {
 	const SavePoint save_point = context.save();
-	const Result result = parse_impl(p.p, context, IgnoreCallback());
+	const Result result = parse_impl(p.p, context, Ignore());
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -439,13 +439,13 @@ template <class P, class C> Result parse_impl(const Not<P>& p, Context& context,
 	return FAILURE;
 }
 
-template <class P, class C> Result parse_impl(const Ignore<P>& p, Context& context, const C& callback) {
-	return parse_impl(p.p, context, IgnoreCallback());
+template <class P, class C> Result parse_impl(const Ignore_<P>& p, Context& context, const C& callback) {
+	return parse_impl(p.p, context, Ignore());
 }
 
-template <class P, class C> Result parse_impl(const ToString<P>& p, Context& context, const C& callback) {
+template <class P, class C> Result parse_impl(const CollectString<P>& p, Context& context, const C& callback) {
 	const SavePoint save_point = context.save();
-	const Result result = parse_impl(p.p, context, IgnoreCallback());
+	const Result result = parse_impl(p.p, context, Ignore());
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -492,7 +492,7 @@ template <class C> Result parse_impl(const Error_& p, Context& context, const C&
 }
 
 template <class C> Result parse_impl(const Expect& p, Context& context, const C& callback) {
-	const Result result = parse_impl(p.s, context, IgnoreCallback());
+	const Result result = parse_impl(p.s, context, Ignore());
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -514,7 +514,7 @@ template <class P, class C> parser::Result parse(parser::Context& context, P&& p
 	return parse_impl(std::forward<P>(p), context, callback);
 }
 template <class P> parser::Result parse(parser::Context& context, P&& p) {
-	return parse(context, std::forward<P>(p), parser::IgnoreCallback());
+	return parse(context, std::forward<P>(p), parser::Ignore());
 }
 template <class P> parser::Result parse(const StringView& s, P&& p) {
 	parser::Context context(s);

@@ -88,16 +88,16 @@ template <class P> constexpr Indent<P> indented(P p) {
 	return Indent<P>(p);
 }
 
-template <class P> class Reference {
+template <class P> class Reference_ {
 	const P* p;
 public:
-	constexpr Reference(const P& p): p(&p) {}
+	constexpr Reference_(const P& p): p(&p) {}
 	void print(Context& context) const {
 		print_impl(*p, context);
 	}
 };
-template <class P> constexpr Reference<P> ref(const P& p) {
-	return Reference<P>(p);
+template <class P> constexpr Reference_<P> ref(const P& p) {
+	return Reference_<P>(p);
 }
 
 template <class F> class PrintFunctor {
@@ -307,12 +307,12 @@ constexpr Plural print_plural(const char* word, unsigned int count) {
 	return Plural(word, count);
 }
 
-template <class P, class C> void print_message(Context& context, const C& color, const char* severity, const P& p) {
+template <class P, class C> void print_diagnostic(Context& context, const C& color, const char* severity, const P& p) {
 	print_impl(bold(color(format("%: ", severity))), context);
 	print_impl(p, context);
 	context.print('\n');
 }
-template <class P, class C> void print_message(Context& context, const char* path, const StringView& source, SourceLocation location, const C& color, const char* severity, const P& p) {
+template <class P, class C> void print_diagnostic(Context& context, const char* path, const StringView& source, SourceLocation location, const C& color, const char* severity, const P& p) {
 	location.begin = std::min(location.begin, source.size());
 	location.end = std::min(location.end, source.size() + 1);
 	unsigned int line_number = 1;
@@ -334,7 +334,7 @@ template <class P, class C> void print_message(Context& context, const char* pat
 	const unsigned int last_line_number = line_number;
 	const unsigned int line_number_width = print_number(last_line_number).get_width();
 
-	print_message(context, color, severity, p);
+	print_diagnostic(context, color, severity, p);
 
 	print_impl(ln(format(" %--> %:%:%:", repeat(' ', line_number_width), path, print_number(first_line_number), print_number(column))), context);
 
@@ -397,19 +397,19 @@ template <class P, class C> void print_message(Context& context, const char* pat
 inline void print_error(const char* path, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
 	if (path == nullptr) {
-		print_message(context, red, "error", message);
+		print_diagnostic(context, red, "error", message);
 		return;
 	}
 	auto source = read_file(path);
-	print_message(context, path, StringView(source.data(), source.size()), location, red, "error", message);
+	print_diagnostic(context, path, StringView(source.data(), source.size()), location, red, "error", message);
 }
 inline void print_error(const char* path, const StringView& source, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
-	print_message(context, path, source, location, red, "error", message);
+	print_diagnostic(context, path, source, location, red, "error", message);
 }
 inline void print_warning(const char* path, const StringView& source, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
-	print_message(context, path, source, location, yellow, "warning", message);
+	print_diagnostic(context, path, source, location, yellow, "warning", message);
 }
 
 }
