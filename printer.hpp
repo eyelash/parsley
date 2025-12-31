@@ -312,7 +312,11 @@ template <class P, class C> void print_diagnostic(Context& context, const C& col
 	print_impl(p, context);
 	context.print('\n');
 }
-template <class P, class C> void print_diagnostic(Context& context, const char* path, const StringView& source, SourceLocation location, const C& color, const char* severity, const P& p) {
+template <class P, class C> void print_diagnostic(Context& context, const StringView& path, const C& color, const char* severity, const P& p) {
+	print_diagnostic(context, color, severity, p);
+	print_impl(ln(format("--> %", path)), context);
+}
+template <class P, class C> void print_diagnostic(Context& context, const StringView& path, const StringView& source, SourceLocation location, const C& color, const char* severity, const P& p) {
 	location.begin = std::min(location.begin, source.size());
 	location.end = std::min(location.end, source.size() + 1);
 	unsigned int line_number = 1;
@@ -325,7 +329,6 @@ template <class P, class C> void print_diagnostic(Context& context, const char* 
 		}
 	}
 	const unsigned int first_line_number = line_number;
-	const unsigned int column = i - line_start + 1;
 	for (; i + 1 < location.end; ++i) {
 		if (source[i] == '\n') {
 			++line_number;
@@ -336,7 +339,7 @@ template <class P, class C> void print_diagnostic(Context& context, const char* 
 
 	print_diagnostic(context, color, severity, p);
 
-	print_impl(ln(format(" %--> %:%:%:", repeat(' ', line_number_width), path, print_number(first_line_number), print_number(column))), context);
+	print_impl(ln(format(" %--> %", repeat(' ', line_number_width), path)), context);
 
 	print_impl(ln(format(" % |", repeat(' ', line_number_width))), context);
 
@@ -403,11 +406,11 @@ inline void print_error(const char* path, const SourceLocation& location, const 
 	auto source = read_file(path);
 	print_diagnostic(context, path, StringView(source.data(), source.size()), location, red, "error", message);
 }
-inline void print_error(const char* path, const StringView& source, const SourceLocation& location, const StringView& message) {
+inline void print_error(const StringView& path, const StringView& source, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
 	print_diagnostic(context, path, source, location, red, "error", message);
 }
-inline void print_warning(const char* path, const StringView& source, const SourceLocation& location, const StringView& message) {
+inline void print_warning(const StringView& path, const StringView& source, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
 	print_diagnostic(context, path, source, location, yellow, "warning", message);
 }
