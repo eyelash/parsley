@@ -99,7 +99,7 @@ int main(int argc, const char** argv) {
 		parser::Context context(source);
 		const Result result = parse_impl(program, context, GetValueCallback<unsigned int>(value));
 		if (result == ERROR) {
-			print_error("", context.get_source(), context.get_location(), context.get_error());
+			print_error(StringView(), context.get_source(), context.get_location(), context.get_error());
 			return 1;
 		}
 		if (result == FAILURE) {
