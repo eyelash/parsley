@@ -236,6 +236,10 @@ class SourceLocation {
 public:
 	std::size_t begin;
 	std::size_t end;
+	constexpr SourceLocation(): begin(-1), end(-1) {}
 	constexpr SourceLocation(std::size_t location): begin(location), end(location + 1) {}
 	constexpr SourceLocation(std::size_t begin, std::size_t end): begin(begin), end(end) {}
+	explicit constexpr operator bool() const {
+		return begin != SourceLocation().begin && end != SourceLocation().end;
+	}
 };
