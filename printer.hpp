@@ -307,16 +307,29 @@ constexpr Plural print_plural(const char* word, unsigned int count) {
 	return Plural(word, count);
 }
 
-template <class P, class C> void print_diagnostic(Context& context, const C& color, const char* severity, const P& p) {
-	print_impl(bold(color(format("%: ", severity))), context);
+struct DiagnosticType {
+	struct Error {
+		static constexpr const char* severity = "error";
+		using Color = Red;
+	};
+	struct Warning {
+		static constexpr const char* severity = "warning";
+		using Color = Yellow;
+	};
+};
+
+template <class Type, class P> void print_diagnostic(Context& context, const P& p) {
+	const typename Type::Color color;
+	print_impl(bold(color(format("%: ", Type::severity))), context);
 	print_impl(p, context);
 	context.print('\n');
 }
-template <class P, class C> void print_diagnostic(Context& context, const StringView& path, const C& color, const char* severity, const P& p) {
-	print_diagnostic(context, color, severity, p);
+template <class Type, class P> void print_diagnostic(Context& context, const StringView& path, const P& p) {
+	print_diagnostic<Type>(context, p);
 	print_impl(ln(format("--> %", path)), context);
 }
-template <class P, class C> void print_diagnostic(Context& context, const StringView& path, const StringView& source, SourceLocation location, const C& color, const char* severity, const P& p) {
+template <class Type, class P> void print_diagnostic(Context& context, const StringView& path, const StringView& source, SourceLocation location, const P& p) {
+	const typename Type::Color color;
 	location.begin = std::min(location.begin, source.size());
 	location.end = std::min(location.end, source.size() + 1);
 	unsigned int line_number = 1;
@@ -337,7 +350,7 @@ template <class P, class C> void print_diagnostic(Context& context, const String
 	const unsigned int last_line_number = line_number;
 	const unsigned int line_number_width = print_number(last_line_number).get_width();
 
-	print_diagnostic(context, color, severity, p);
+	print_diagnostic<Type>(context, p);
 
 	print_impl(ln(format(" %--> %", repeat(' ', line_number_width), path)), context);
 
@@ -400,19 +413,19 @@ template <class P, class C> void print_diagnostic(Context& context, const String
 inline void print_error(const char* path, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
 	if (path == nullptr) {
-		print_diagnostic(context, red, "error", message);
+		print_diagnostic<DiagnosticType::Error>(context, message);
 		return;
 	}
 	auto source = read_file(path);
-	print_diagnostic(context, path, StringView(source.data(), source.size()), location, red, "error", message);
+	print_diagnostic<DiagnosticType::Error>(context, path, StringView(source.data(), source.size()), location, message);
 }
 inline void print_error(const StringView& path, const StringView& source, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
-	print_diagnostic(context, path, source, location, red, "error", message);
+	print_diagnostic<DiagnosticType::Error>(context, path, source, location, message);
 }
 inline void print_warning(const StringView& path, const StringView& source, const SourceLocation& location, const StringView& message) {
 	Context context(std::cerr);
-	print_diagnostic(context, path, source, location, yellow, "warning", message);
+	print_diagnostic<DiagnosticType::Warning>(context, path, source, location, message);
 }
 
 }
