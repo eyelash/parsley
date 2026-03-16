@@ -232,6 +232,15 @@ public:
 	}
 };
 
+template <class T, T value> class ConstantCollector {
+public:
+	constexpr ConstantCollector() {}
+	template <class... A> constexpr void push(A&&...) const {}
+	template <class C> void retrieve(const C& callback) {
+		callback.push(value);
+	}
+};
+
 template <std::size_t I> class TupleIndex {
 public:
 	constexpr TupleIndex() {}
