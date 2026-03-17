@@ -232,6 +232,14 @@ public:
 	}
 };
 
+template <class T> class ConstructorMapper {
+public:
+	constexpr ConstructorMapper() {}
+	template <class C, class... A> static void map(const C& callback, A&&... a) {
+		callback.push(T(std::forward<A>(a)...));
+	}
+};
+
 template <class T, T value> class ConstantCollector {
 public:
 	constexpr ConstantCollector() {}
