@@ -228,7 +228,7 @@ template <class T> class TagMapper {
 public:
 	constexpr TagMapper() {}
 	template <class C, class... A> static void map(const C& callback, A&&... a) {
-		callback.push(std::forward<A>(a)..., T());
+		callback.push(T(), std::forward<A>(a)...);
 	}
 };
 
@@ -273,11 +273,11 @@ public:
 	template <class A> std::enable_if_t<!std::is_assignable<T0&, A>::value> push(A&& a) {
 		tail.push(std::forward<A>(a));
 	}
-	template <class A, std::size_t I> std::enable_if_t<I == 0> push(A&& a, TupleIndex<I>) {
+	template <class A, std::size_t I> std::enable_if_t<I == 0> push(TupleIndex<I>, A&& a) {
 		head = std::forward<A>(a);
 	}
-	template <class A, std::size_t I> std::enable_if_t<I != 0> push(A&& a, TupleIndex<I>) {
-		tail.push(std::forward<A>(a), TupleIndex<I - 1>());
+	template <class A, std::size_t I> std::enable_if_t<I != 0> push(TupleIndex<I>, A&& a) {
+		tail.push(TupleIndex<I - 1>(), std::forward<A>(a));
 	}
 	template <class C, class... A> void retrieve(const C& callback, A&&... a) {
 		tail.retrieve(callback, std::forward<A>(a)..., std::move(head));

@@ -48,7 +48,7 @@ public:
 	void push(unsigned int n) {
 		this->n = n;
 	}
-	template <BinaryOperation operation> void push(unsigned int n, BinaryOperationTag<operation>) {
+	template <BinaryOperation operation> void push(BinaryOperationTag<operation>, unsigned int n) {
 		this->n = operation(this->n, n);
 	}
 	void set_location(const SourceLocation& location) {}
