@@ -232,6 +232,19 @@ inline std::vector<char> read_file(const char* path) {
 	return std::vector<char>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
 
+class Index {
+	std::size_t index;
+public:
+	constexpr Index(): index(-1) {}
+	constexpr Index(std::size_t index): index(index) {}
+	explicit constexpr operator bool() const {
+		return index != Index().index;
+	}
+	constexpr std::size_t operator *() const {
+		return index;
+	}
+};
+
 class SourceLocation {
 public:
 	std::size_t begin;
