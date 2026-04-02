@@ -71,6 +71,22 @@ public:
 	constexpr Tag() {}
 };
 
+template <class I> class Range {
+	I begin_;
+	I end_;
+public:
+	Range(I begin_, I end_): begin_(begin_), end_(end_) {}
+	I begin() const {
+		return begin_;
+	}
+	I end() const {
+		return end_;
+	}
+	std::size_t size() const {
+		return end_ - begin_;
+	}
+};
+
 class StringView {
 	const char* string;
 	std::size_t length;
