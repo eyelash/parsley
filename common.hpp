@@ -85,6 +85,15 @@ public:
 	std::size_t size() const {
 		return end_ - begin_;
 	}
+	bool empty() const {
+		return !(begin_ != end_);
+	}
+	Range subrange(std::size_t pos, std::size_t count) const {
+		return Range(begin_ + pos, begin_ + pos + count);
+	}
+	Range subrange(std::size_t pos) const {
+		return Range(begin_ + pos, end_);
+	}
 };
 
 class StringView {
@@ -98,6 +107,9 @@ class StringView {
 	}
 	static constexpr const char* strchr(const char* s, char c) {
 		return *s == c ? s : *s == '\0' ? nullptr : strchr(s + 1, c);
+	}
+	static constexpr const char* memchr(const char* s, char c, std::size_t n) {
+		return n == 0 ? nullptr : *s == c ? s : memchr(s + 1, c, n - 1);
 	}
 	static constexpr std::size_t strlen(const char* s) {
 		return strchr(s, '\0') - s;
@@ -142,7 +154,7 @@ public:
 		return string + length;
 	}
 	constexpr bool contains(char c) const {
-		return strchr(string, c);
+		return memchr(string, c, length);
 	}
 	constexpr StringView substr(std::size_t pos, std::size_t count) const {
 		return StringView(string + pos, count);
