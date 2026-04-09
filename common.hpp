@@ -9,6 +9,14 @@
 #include <vector>
 #include <iterator>
 
+class Unit {
+public:
+	constexpr Unit() {}
+	constexpr bool operator <(Unit rhs) const {
+		return false;
+	}
+};
+
 class Dynamic {
 	int type_id;
 public:
