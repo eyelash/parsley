@@ -109,6 +109,9 @@ class Assembler {
 		RM(op2, op1);
 	}
 public:
+	std::size_t get_position() const {
+		return data.size();
+	}
 	const std::vector<char>& get_data() const {
 		return data;
 	}
