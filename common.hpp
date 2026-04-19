@@ -102,6 +102,9 @@ public:
 	Range subrange(std::size_t pos) const {
 		return Range(begin_ + pos, end_);
 	}
+	Range<std::reverse_iterator<I>> reverse() const {
+		return Range<std::reverse_iterator<I>>(std::reverse_iterator<I>(end_), std::reverse_iterator<I>(begin_));
+	}
 };
 
 class StringView {
