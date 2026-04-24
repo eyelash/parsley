@@ -21,6 +21,87 @@ public:
 	virtual void write(const char* data, std::size_t size) = 0;
 };
 
+class BufferedInput: public Input {
+	static constexpr std::size_t BUFFER_SIZE = 8192;
+	Input& input;
+	char buffer[BUFFER_SIZE];
+	std::size_t i, buffer_size;
+public:
+	BufferedInput(Input& input): input(input), i(0), buffer_size(0) {}
+	BufferedInput(const BufferedInput&) = delete;
+	BufferedInput& operator =(const BufferedInput&) = delete;
+	std::size_t read(char* data, std::size_t size) override {
+		const std::size_t capacity = buffer_size - i;
+		if (size <= capacity) {
+			std::memcpy(data, buffer + i, size);
+			i += size;
+			return size;
+		}
+		if (capacity > 0) {
+			std::memcpy(data, buffer + i, capacity);
+			data += capacity;
+			size -= capacity;
+			i = buffer_size;
+		}
+		if (size < BUFFER_SIZE) {
+			buffer_size = input.read(buffer, BUFFER_SIZE);
+			size = std::min(size, buffer_size);
+			std::memcpy(data, buffer, size);
+			i = size;
+			return capacity + size;
+		}
+		else {
+			return capacity + input.read(data, size);
+		}
+	}
+	bool read(char& c) {
+		return read(&c, 1);
+	}
+};
+
+class BufferedOutput: public Output {
+	static constexpr std::size_t BUFFER_SIZE = 8192;
+	Output& output;
+	char buffer[BUFFER_SIZE];
+	std::size_t i;
+public:
+	BufferedOutput(Output& output): output(output), i(0) {}
+	BufferedOutput(const BufferedOutput&) = delete;
+	~BufferedOutput() {
+		output.write(buffer, i);
+	}
+	BufferedOutput& operator =(const BufferedOutput&) = delete;
+	void write(const char* data, std::size_t size) override {
+		const std::size_t capacity = BUFFER_SIZE - i;
+		if (size < capacity) {
+			std::memcpy(buffer + i, data, size);
+			i += size;
+			return;
+		}
+		if (i > 0) {
+			std::memcpy(buffer + i, data, capacity);
+			data += capacity;
+			size -= capacity;
+			output.write(buffer, BUFFER_SIZE);
+			i = 0;
+		}
+		if (size < BUFFER_SIZE) {
+			std::memcpy(buffer, data, size);
+			i = size;
+		}
+		else {
+			output.write(data, size);
+		}
+	}
+	void write(char c) {
+		write(&c, 1);
+	}
+	void flush() {
+		output.write(buffer, i);
+		i = 0;
+	}
+};
+
 class ReadFile: public Input {
 	#ifdef _WIN32
 	#else
