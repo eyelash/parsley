@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include <cstdlib>
 #include <cstring>
 #include <cerrno>
 
@@ -9,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #endif
 
 class Input {
@@ -293,5 +295,65 @@ public:
 		#endif
 		static BufferedOutput buffered_output(standard_error);
 		return buffered_output;
+	}
+};
+
+class Process {
+	#ifdef _WIN32
+	#else
+	pid_t pid;
+	#endif
+public:
+	WriteFile standard_input;
+private:
+	#ifdef _WIN32
+	#else
+	template <class T> static T* malloc(std::size_t size) {
+		return static_cast<T*>(std::malloc(sizeof(T) * size));
+	}
+	static char* malloc_string(const StringView& s) {
+		char* result = malloc<char>(s.size() + 1);
+		std::memcpy(result, s.data(), s.size());
+		result[s.size()] = '\0';
+		return result;
+	}
+	static char** malloc_arguments(const StringView& program, const std::vector<StringView>& arguments) {
+		char** result = malloc<char*>(arguments.size() + 2);
+		result[0] = malloc_string(program);
+		for (std::size_t i = 0; i < arguments.size(); ++i) {
+			result[i + 1] = malloc_string(arguments[i]);
+		}
+		result[arguments.size() + 1] = nullptr;
+		return result;
+	}
+	Process(pid_t pid, int stdin_fd): pid(pid), standard_input(stdin_fd) {}
+	#endif
+public:
+	static Process spawn(const StringView& program, const std::vector<StringView>& arguments) {
+		#ifdef _WIN32
+		#else
+		int stdin_pipe[2];
+		pipe2(stdin_pipe, O_CLOEXEC);
+		pid_t pid = fork();
+		if (pid == 0) {
+			dup2(stdin_pipe[0], STDIN_FILENO);
+			char** arguments_ = malloc_arguments(program, arguments);
+			execvp(arguments_[0], arguments_);
+			_exit(EXIT_FAILURE);
+		}
+		close(stdin_pipe[0]);
+		return Process(pid, stdin_pipe[1]);
+		#endif
+	}
+	Process(const Process&) = delete;
+	Process& operator =(const Process&) = delete;
+	int join() {
+		#ifdef _WIN32
+		#else
+		standard_input = WriteFile();
+		int status;
+		waitpid(pid, &status, 0);
+		return WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE;
+		#endif
 	}
 };
