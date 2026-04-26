@@ -108,6 +108,10 @@ class ReadFile: public Input {
 	int fd;
 	#endif
 public:
+	#ifdef _WIN32
+	#else
+	ReadFile(int fd): fd(fd) {}
+	#endif
 	ReadFile() {
 		#ifdef _WIN32
 		#else
@@ -187,6 +191,10 @@ class WriteFile: public Output {
 	int fd;
 	#endif
 public:
+	#ifdef _WIN32
+	#else
+	WriteFile(int fd): fd(fd) {}
+	#endif
 	WriteFile() {
 		#ifdef _WIN32
 		#else
@@ -249,5 +257,41 @@ public:
 			size -= result;
 		}
 		#endif
+	}
+};
+
+class StandardInput {
+public:
+	static BufferedInput& get() {
+		#ifdef _WIN32
+		#else
+		static ReadFile standard_input(STDIN_FILENO);
+		#endif
+		static BufferedInput buffered_input(standard_input);
+		return buffered_input;
+	}
+};
+
+class StandardOutput {
+public:
+	static BufferedOutput& get() {
+		#ifdef _WIN32
+		#else
+		static WriteFile standard_output(STDOUT_FILENO);
+		#endif
+		static BufferedOutput buffered_output(standard_output);
+		return buffered_output;
+	}
+};
+
+class StandardError {
+public:
+	static BufferedOutput& get() {
+		#ifdef _WIN32
+		#else
+		static WriteFile standard_error(STDERR_FILENO);
+		#endif
+		static BufferedOutput buffered_output(standard_error);
+		return buffered_output;
 	}
 };
