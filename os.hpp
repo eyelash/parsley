@@ -13,6 +13,164 @@
 #include <sys/wait.h>
 #endif
 
+class Path {
+	static constexpr bool is_separator(char c) {
+		#ifdef _WIN32
+		return c == '\\' || c == '/';
+		#else
+		return c == '/';
+		#endif
+	}
+	static constexpr StringView get_separator() {
+		#ifdef _WIN32
+		return StringView("\\");
+		#else
+		return StringView("/");
+		#endif
+	}
+	static bool is_absolute(const std::string& path) {
+		return path.size() > 0 && is_separator(path[0]);
+	}
+	static std::size_t get_start(const std::string& path) {
+		return is_absolute(path) ? 1 : 0;
+	}
+	static void write(std::string& path, std::size_t& i, const StringView& s) {
+		path.replace(i, s.size(), s.data(), s.size());
+		i += s.size();
+	}
+	static void push_component(std::string& path, std::size_t& i, std::size_t start, const StringView& component) {
+		if (i > start) {
+			write(path, i, get_separator());
+		}
+		write(path, i, component);
+	}
+	static void push_component(std::string& path, const StringView& component) {
+		std::size_t i = path.size();
+		push_component(path, i, get_start(path), component);
+	}
+	static void pop_component(const std::string& path, std::size_t& i, std::size_t start) {
+		while (i > start && !is_separator(path[i - 1])) {
+			--i;
+		}
+		if (i > start) {
+			--i;
+		}
+	}
+	static StringView get_next_component(const std::string& path, std::size_t& i, std::size_t end) {
+		const std::size_t component_start = i;
+		while (i < end && !is_separator(path[i])) {
+			++i;
+		}
+		const std::size_t component_end = i;
+		if (i < end) {
+			++i;
+		}
+		return StringView(path.data() + component_start, component_end - component_start);
+	}
+	static void normalize(std::string& path) {
+		const bool relative = !is_absolute(path);
+		const std::size_t start = get_start(path);
+		const std::size_t end = path.size();
+		std::size_t read_i = start;
+		std::size_t write_i = start;
+		std::size_t component_count = 0;
+		while (read_i < end) {
+			const StringView component = get_next_component(path, read_i, end);
+			if (component.empty() || component == ".") {
+				continue;
+			}
+			else if (component == "..") {
+				if (component_count > 0) {
+					pop_component(path, write_i, start);
+					--component_count;
+				}
+				else if (relative) {
+					push_component(path, write_i, start, component);
+				}
+			}
+			else {
+				push_component(path, write_i, start, component);
+				++component_count;
+			}
+		}
+		if (relative && write_i == start) {
+			write(path, write_i, ".");
+		}
+		path.resize(write_i);
+	}
+	static std::size_t get_parent(const std::string& path) {
+		const std::size_t start = get_start(path);
+		std::size_t i = path.size();
+		while (i > start && is_separator(path[i - 1])) {
+			--i;
+		}
+		while (i > start && !is_separator(path[i - 1])) {
+			--i;
+		}
+		while (i > start && is_separator(path[i - 1])) {
+			--i;
+		}
+		return i;
+	}
+	static StringView get_file_name(const std::string& path) {
+		const std::size_t start = get_start(path);
+		std::size_t i = path.size();
+		while (i > start && !is_separator(path[i - 1])) {
+			--i;
+		}
+		return StringView(path.data() + i, path.size() - i);
+	}
+	std::string path;
+public:
+	Path(std::string&& path): path(std::move(path)) {}
+	Path(const char* path): path(path) {}
+	operator const char*() const {
+		return path.c_str();
+	}
+	bool is_absolute() const {
+		return is_absolute(path);
+	}
+	bool is_relative() const {
+		return !is_absolute(path);
+	}
+	Path parent() && {
+		const std::size_t i = get_parent(path);
+		path.resize(i);
+		return Path(std::move(path));
+	}
+	Path parent() const& {
+		const std::size_t i = get_parent(path);
+		return Path(path.substr(0, i));
+	}
+	StringView file_name() const {
+		return get_file_name(path);
+	}
+	Path normalize() && {
+		normalize(path);
+		return Path(std::move(path));
+	}
+	Path normalize() const& {
+		std::string new_path = path;
+		normalize(new_path);
+		return Path(std::move(new_path));
+	}
+	friend Path operator /(Path&& lhs, const Path& rhs) {
+		if (rhs.is_absolute()) {
+			return rhs;
+		}
+		push_component(lhs.path, rhs.path);
+		return Path(std::move(lhs.path));
+	}
+	friend Path operator /(const Path& lhs, const Path& rhs) {
+		if (rhs.is_absolute()) {
+			return rhs;
+		}
+		std::string new_path = lhs.path;
+		push_component(new_path, rhs.path);
+		return Path(std::move(new_path));
+	}
+};
+
 class Input {
 public:
 	virtual std::size_t read(char* data, std::size_t size) = 0;
