@@ -6,10 +6,12 @@
 #include <cerrno>
 
 #ifdef _WIN32
+#include <Windows.h>
 #else
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <sys/wait.h>
 #endif
 
@@ -438,6 +440,70 @@ public:
 			size -= result;
 		}
 		#endif
+	}
+};
+
+class MemoryMappedFile {
+	void* address;
+	std::size_t size_;
+public:
+	MemoryMappedFile(const char* path) {
+		#ifdef _WIN32
+		HANDLE file = CreateFile(path, GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		LARGE_INTEGER large_integer;
+		GetFileSizeEx(file, &large_integer);
+		size_ = large_integer.QuadPart;
+		HANDLE mapping = CreateFileMapping(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
+		address = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, size_);
+		CloseHandle(mapping);
+		CloseHandle(file);
+		#else
+		const int fd = open(path, O_RDONLY);
+		if (fd == -1) {
+			address = nullptr;
+			size_ = 0;
+			return;
+		}
+		struct stat s;
+		fstat(fd, &s);
+		size_ = s.st_size;
+		address = mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd, 0);
+		if (address == MAP_FAILED) {
+			address = nullptr;
+			size_ = 0;
+		}
+		close(fd);
+		#endif
+	}
+	MemoryMappedFile(): address(nullptr), size_(0) {}
+	MemoryMappedFile(const MemoryMappedFile&) = delete;
+	~MemoryMappedFile() {
+		#ifdef _WIN32
+		UnmapViewOfFile(address);
+		#else
+		if (address) {
+			munmap(address, size_);
+		}
+		#endif
+	}
+	MemoryMappedFile& operator =(const MemoryMappedFile&) = delete;
+	explicit operator bool() const {
+		return address != nullptr;
+	}
+	const char* data() const {
+		return static_cast<char*>(address);
+	}
+	std::size_t size() const {
+		return size_;
+	}
+	char operator [](std::size_t i) const {
+		return static_cast<char*>(address)[i];
+	}
+	const char* begin() const {
+		return static_cast<char*>(address);
+	}
+	const char* end() const {
+		return static_cast<char*>(address) + size_;
 	}
 };
 
