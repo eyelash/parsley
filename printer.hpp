@@ -451,3 +451,52 @@ template <class P> std::string print_to_string(P&& p) {
 	print(ostream, std::forward<P>(p));
 	return ostream.str();
 }
+
+template <class Type> class Diagnostic {
+	std::string path;
+	SourceLocation location;
+	std::string message;
+public:
+	template <class P> Diagnostic(const char* path, const SourceLocation& location, P&& p): path(path), location(location), message(print_to_string(std::forward<P>(p))) {}
+	template <class P> Diagnostic(const char* path, P&& p): path(path), message(print_to_string(std::forward<P>(p))) {}
+	template <class P> Diagnostic(P&& p): message(print_to_string(std::forward<P>(p))) {}
+	void print(printer::Context& context) const {
+		const StringView path_ = path.empty() ? StringView() : path;
+		const StringView message_ = message;
+		if (path_ && location) {
+			auto source = read_file(path.c_str());
+			const StringView source_ = StringView(source.data(), source.size());
+			printer::print_diagnostic<Type>(context, path_, source_, location, message_);
+		}
+		else {
+			printer::print_diagnostic<Type>(context, path_, message_);
+		}
+	}
+};
+
+class Diagnostics {
+	std::vector<Diagnostic<printer::DiagnosticType::Error>> errors;
+	std::vector<Diagnostic<printer::DiagnosticType::Warning>> warnings;
+public:
+	bool has_error() const {
+		return !errors.empty();
+	}
+	template <class... A> void add_error(A&&... a) {
+		errors.emplace_back(std::forward<A>(a)...);
+	}
+	template <class... A> void add_warning(A&&... a) {
+		warnings.emplace_back(std::forward<A>(a)...);
+	}
+	void print(printer::Context& context) const {
+		for (const Diagnostic<printer::DiagnosticType::Warning>& warning: warnings) {
+			warning.print(context);
+		}
+		for (const Diagnostic<printer::DiagnosticType::Error>& error: errors) {
+			error.print(context);
+		}
+	}
+	void print() const {
+		printer::Context context(std::cerr);
+		print(context);
+	}
+};
