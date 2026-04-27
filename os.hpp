@@ -262,6 +262,27 @@ public:
 	}
 };
 
+class StringInput: public Input {
+	StringView string;
+public:
+	StringInput(const StringView& string): string(string) {}
+	std::size_t read(char* data, std::size_t size) override {
+		size = std::min(size, string.size());
+		std::memcpy(data, string.data(), size);
+		string = string.substr(size);
+		return size;
+	}
+};
+
+class StringOutput: public Output {
+	std::string& string;
+public:
+	StringOutput(std::string& string): string(string) {}
+	void write(const char* data, std::size_t size) override {
+		string.append(data, size);
+	}
+};
+
 class ReadFile: public Input {
 	#ifdef _WIN32
 	#else
