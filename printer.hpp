@@ -409,22 +409,13 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 		line_start = i + 1;
 	}
 }
-inline void print_error(const char* path, const SourceLocation& location, const StringView& message) {
+template <class... A> void print_error(A&&... a) {
 	Context context(std::cerr);
-	if (path == nullptr) {
-		print_diagnostic<DiagnosticType::Error>(context, message);
-		return;
-	}
-	auto source = read_file(path);
-	print_diagnostic<DiagnosticType::Error>(context, path, StringView(source.data(), source.size()), location, message);
+	print_diagnostic<DiagnosticType::Error>(context, std::forward<A>(a)...);
 }
-inline void print_error(const StringView& path, const StringView& source, const SourceLocation& location, const StringView& message) {
+template <class... A> void print_warning(A&&... a) {
 	Context context(std::cerr);
-	print_diagnostic<DiagnosticType::Error>(context, path, source, location, message);
-}
-inline void print_warning(const StringView& path, const StringView& source, const SourceLocation& location, const StringView& message) {
-	Context context(std::cerr);
-	print_diagnostic<DiagnosticType::Warning>(context, path, source, location, message);
+	print_diagnostic<DiagnosticType::Warning>(context, std::forward<A>(a)...);
 }
 
 }
@@ -471,6 +462,7 @@ public:
 		else {
 			printer::print_diagnostic<Type>(context, path_, message_);
 		}
+		context.print('\n');
 	}
 };
 
