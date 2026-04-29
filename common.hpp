@@ -79,11 +79,81 @@ public:
 	constexpr Tag() {}
 };
 
+template <class T> class IntegralIterator {
+	T t;
+public:
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type = T;
+	using difference_type = T;
+	using reference = T;
+	using pointer = void;
+	constexpr IntegralIterator(): t() {}
+	constexpr IntegralIterator(T t): t(t) {}
+	constexpr T operator *() const {
+		return t;
+	}
+	constexpr T operator [](T i) const {
+		return t + i;
+	}
+	IntegralIterator& operator ++() {
+		++t;
+		return *this;
+	}
+	IntegralIterator& operator --() {
+		--t;
+		return *this;
+	}
+	IntegralIterator operator ++(int) {
+		return IntegralIterator(t++);
+	}
+	IntegralIterator operator --(int) {
+		return IntegralIterator(t--);
+	}
+	IntegralIterator& operator +=(T rhs) {
+		t += rhs;
+		return *this;
+	}
+	IntegralIterator& operator -=(T rhs) {
+		t -= rhs;
+		return *this;
+	}
+	friend constexpr IntegralIterator operator +(IntegralIterator lhs, T rhs) {
+		return IntegralIterator(lhs.t + rhs);
+	}
+	friend constexpr IntegralIterator operator +(T lhs, IntegralIterator rhs) {
+		return IntegralIterator(lhs + rhs.t);
+	}
+	friend constexpr IntegralIterator operator -(IntegralIterator lhs, T rhs) {
+		return IntegralIterator(lhs.t - rhs);
+	}
+	friend constexpr T operator -(IntegralIterator lhs, IntegralIterator rhs) {
+		return lhs.t - rhs.t;
+	}
+	friend constexpr bool operator ==(IntegralIterator lhs, IntegralIterator rhs) {
+		return lhs.t == rhs.t;
+	}
+	friend constexpr bool operator !=(IntegralIterator lhs, IntegralIterator rhs) {
+		return lhs.t != rhs.t;
+	}
+	friend constexpr bool operator <(IntegralIterator lhs, IntegralIterator rhs) {
+		return lhs.t < rhs.t;
+	}
+	friend constexpr bool operator <=(IntegralIterator lhs, IntegralIterator rhs) {
+		return lhs.t <= rhs.t;
+	}
+	friend constexpr bool operator >(IntegralIterator lhs, IntegralIterator rhs) {
+		return lhs.t > rhs.t;
+	}
+	friend constexpr bool operator >=(IntegralIterator lhs, IntegralIterator rhs) {
+		return lhs.t >= rhs.t;
+	}
+};
+
 template <class I> class Range {
 	I begin_;
 	I end_;
 public:
-	Range(I begin_, I end_): begin_(begin_), end_(end_) {}
+	constexpr Range(I begin_, I end_): begin_(begin_), end_(end_) {}
 	I begin() const {
 		return begin_;
 	}
@@ -106,6 +176,18 @@ public:
 		return Range<std::reverse_iterator<I>>(std::reverse_iterator<I>(end_), std::reverse_iterator<I>(begin_));
 	}
 };
+template <class T> Range<typename std::vector<T>::const_iterator> range(const std::vector<T>& v) {
+	return Range<typename std::vector<T>::const_iterator>(v.begin(), v.end());
+}
+template <class T> constexpr std::enable_if_t<std::is_integral<T>::value, Range<IntegralIterator<T>>> range(T begin_, T end_) {
+	return Range<IntegralIterator<T>>(IntegralIterator<T>(begin_), IntegralIterator<T>(end_));
+}
+template <class T> constexpr std::enable_if_t<std::is_integral<T>::value, Range<IntegralIterator<T>>> range(T end_) {
+	return Range<IntegralIterator<T>>(IntegralIterator<T>(), IntegralIterator<T>(end_));
+}
+template <class I> std::enable_if_t<!std::is_integral<I>::value, Range<I>> range(I begin_, I end_) {
+	return Range<I>(begin_, end_);
+}
 
 class StringView {
 	const char* string;
