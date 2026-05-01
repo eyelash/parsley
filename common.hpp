@@ -376,4 +376,7 @@ public:
 	explicit constexpr operator bool() const {
 		return begin != SourceLocation().begin && end != SourceLocation().end;
 	}
+	constexpr SourceLocation operator -(const SourceLocation& rhs) const {
+		return SourceLocation(begin, rhs.end);
+	}
 };
