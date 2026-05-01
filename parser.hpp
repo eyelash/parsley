@@ -216,14 +216,6 @@ public:
 	}
 };
 
-class IdentityMapper {
-public:
-	constexpr IdentityMapper() {}
-	template <class C, class... A> static void map(const C& callback, A&&... a) {
-		callback.push(std::forward<A>(a)...);
-	}
-};
-
 template <class T> class TagMapper {
 public:
 	constexpr TagMapper() {}
@@ -239,6 +231,24 @@ public:
 		callback.push(T(std::forward<A>(a)...));
 	}
 };
+
+template <class... M> class CompositionMapper;
+template <> class CompositionMapper<> {
+public:
+	constexpr CompositionMapper() {}
+	template <class C, class... A> static void map(const C& callback, A&&... a) {
+		callback.push(std::forward<A>(a)...);
+	}
+};
+template <class M0, class... M> class CompositionMapper<M0, M...> {
+public:
+	constexpr CompositionMapper() {}
+	template <class C, class... A> static void map(const C& callback, A&&... a) {
+		CompositionMapper<M...>::map(MapCallback<M0, C>(callback), std::forward<A>(a)...);
+	}
+};
+
+using IdentityMapper = CompositionMapper<>;
 
 template <class T, T value> class ConstantCollector {
 public:
