@@ -16,6 +16,9 @@
 #endif
 
 class Path {
+	static std::string from_string(const char* s) {
+		return s == nullptr ? std::string() : std::string(s);
+	}
 	static constexpr bool is_separator(char c) {
 		#ifdef _WIN32
 		return c == '\\' || c == '/';
@@ -117,17 +120,28 @@ class Path {
 	static StringView get_file_name(const std::string& path) {
 		const std::size_t start = get_start(path);
 		std::size_t i = path.size();
+		while (i > start && is_separator(path[i - 1])) {
+			--i;
+		}
+		const std::size_t file_name_end = i;
 		while (i > start && !is_separator(path[i - 1])) {
 			--i;
 		}
-		return StringView(path.data() + i, path.size() - i);
+		return StringView(path.data() + i, file_name_end - i);
 	}
 	std::string path;
 public:
+	Path() {}
 	Path(std::string&& path): path(std::move(path)) {}
-	Path(const char* path): path(path) {}
+	Path(const char* path): path(from_string(path)) {}
+	explicit operator bool() const {
+		return !path.empty();
+	}
 	operator const char*() const {
-		return path.c_str();
+		return path.empty() ? nullptr : path.c_str();
+	}
+	operator StringView() const {
+		return path.empty() ? StringView() : StringView(path);
 	}
 	bool is_absolute() const {
 		return is_absolute(path);
