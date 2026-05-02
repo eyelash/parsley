@@ -585,15 +585,14 @@ private:
 		result[arguments.size() + 1] = nullptr;
 		return result;
 	}
-	Process(pid_t pid, int stdin_fd): pid(pid), standard_input(stdin_fd) {}
 	#endif
 public:
-	static Process spawn(const StringView& program, const std::vector<StringView>& arguments) {
+	Process(const StringView& program, const std::vector<StringView>& arguments) {
 		#ifdef _WIN32
 		#else
 		int stdin_pipe[2];
 		pipe2(stdin_pipe, O_CLOEXEC);
-		pid_t pid = fork();
+		pid = fork();
 		if (pid == 0) {
 			dup2(stdin_pipe[0], STDIN_FILENO);
 			char** arguments_ = malloc_arguments(program, arguments);
@@ -601,7 +600,7 @@ public:
 			_exit(EXIT_FAILURE);
 		}
 		close(stdin_pipe[0]);
-		return Process(pid, stdin_pipe[1]);
+		standard_input = WriteFile(stdin_pipe[1]);
 		#endif
 	}
 	Process(const Process&) = delete;

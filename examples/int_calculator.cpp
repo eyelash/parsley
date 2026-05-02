@@ -103,7 +103,7 @@ int main(int argc, const char** argv) {
 			return 1;
 		}
 		if (result == FAILURE) {
-			print(std::cerr, ln(bold(yellow("failure"))));
+			print(StandardError::get(), ln(bold(yellow("failure"))));
 			return 1;
 		}
 		print(ln(format("% %", bold(green("success:")), print_number(value))));
