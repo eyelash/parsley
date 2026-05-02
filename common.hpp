@@ -5,7 +5,6 @@
 #include <type_traits>
 #include <utility>
 #include <string>
-#include <fstream>
 #include <vector>
 #include <iterator>
 
@@ -346,11 +345,6 @@ public:
 };
 constexpr CodePoints code_points(const StringView& s) {
 	return CodePoints(s);
-}
-
-inline std::vector<char> read_file(const char* path) {
-	std::ifstream file(path);
-	return std::vector<char>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
 
 class Index {

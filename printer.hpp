@@ -1,30 +1,29 @@
 #pragma once
 
 #include "common.hpp"
-#include <iostream>
-#include <sstream>
+#include "os.hpp"
 
 namespace printer {
 
 class Context {
-	std::ostream& ostream;
+	BufferedOutput& output;
 	unsigned int indentation = 0;
 	bool is_at_bol = true;
 public:
-	Context(std::ostream& ostream = std::cout): ostream(ostream) {}
+	Context(BufferedOutput& output = StandardOutput::get()): output(output) {}
 	void print(char c) {
 		if (c == '\n') {
-			ostream.put('\n');
+			output.write('\n');
 			is_at_bol = true;
 		}
 		else {
 			if (is_at_bol) {
 				for (unsigned int i = 0; i < indentation; ++i) {
-					ostream.put('\t');
+					output.write('\t');
 				}
 				is_at_bol = false;
 			}
-			ostream.put(c);
+			output.write(c);
 		}
 	}
 	void increase_indentation() {
@@ -410,11 +409,11 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 	}
 }
 template <class... A> void print_error(A&&... a) {
-	Context context(std::cerr);
+	Context context(StandardError::get());
 	print_diagnostic<DiagnosticType::Error>(context, std::forward<A>(a)...);
 }
 template <class... A> void print_warning(A&&... a) {
-	Context context(std::cerr);
+	Context context(StandardError::get());
 	print_diagnostic<DiagnosticType::Warning>(context, std::forward<A>(a)...);
 }
 
@@ -424,27 +423,30 @@ template <class P> void print(printer::Context& context, P&& p) {
 	using namespace printer;
 	print_impl(std::forward<P>(p), context);
 }
-template <class P> void print(std::ostream& ostream, P&& p) {
-	printer::Context context(ostream);
+template <class P> void print(BufferedOutput& output, P&& p) {
+	printer::Context context(output);
 	print(context, std::forward<P>(p));
 }
 template <class P> void print(P&& p) {
-	print(std::cout, std::forward<P>(p));
+	print(StandardOutput::get(), std::forward<P>(p));
 }
-template <class P> void println(std::ostream& ostream, P&& p) {
-	print(ostream, printer::ln(std::forward<P>(p)));
+template <class P> void println(BufferedOutput& output, P&& p) {
+	print(output, printer::ln(std::forward<P>(p)));
+	output.flush();
 }
 template <class P> void println(P&& p) {
-	print(printer::ln(std::forward<P>(p)));
+	println(StandardOutput::get(), std::forward<P>(p));
 }
 template <class P> std::string print_to_string(P&& p) {
-	std::ostringstream ostream;
-	print(ostream, std::forward<P>(p));
-	return ostream.str();
+	std::string s;
+	StringOutput output(s);
+	BufferedOutput buffered(output);
+	print(buffered, std::forward<P>(p));
+	return s;
 }
 
 template <class Type> class Diagnostic {
-	std::string path;
+	Path path;
 	SourceLocation location;
 	std::string message;
 public:
@@ -452,15 +454,12 @@ public:
 	template <class P> Diagnostic(const char* path, P&& p): path(path), message(print_to_string(std::forward<P>(p))) {}
 	template <class P> Diagnostic(P&& p): message(print_to_string(std::forward<P>(p))) {}
 	void print(printer::Context& context) const {
-		const StringView path_ = path.empty() ? StringView() : path;
-		const StringView message_ = message;
-		if (path_ && location) {
-			auto source = read_file(path.c_str());
-			const StringView source_ = StringView(source.data(), source.size());
-			printer::print_diagnostic<Type>(context, path_, source_, location, message_);
+		if (path && location) {
+			MemoryMappedFile source(path);
+			printer::print_diagnostic<Type>(context, path, StringView(source.data(), source.size()), location, StringView(message));
 		}
 		else {
-			printer::print_diagnostic<Type>(context, path_, message_);
+			printer::print_diagnostic<Type>(context, path, StringView(message));
 		}
 		context.print('\n');
 	}
@@ -488,7 +487,7 @@ public:
 		}
 	}
 	void print() const {
-		printer::Context context(std::cerr);
+		printer::Context context(StandardError::get());
 		print(context);
 	}
 };
