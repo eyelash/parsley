@@ -398,10 +398,10 @@ public:
 		fd = -1;
 		#endif
 	}
-	WriteFile(const char* path) {
+	WriteFile(const char* path, bool executable = false) {
 		#ifdef _WIN32
 		#else
-		fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0666);
+		fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, executable ? 0777 : 0666);
 		#endif
 	}
 	WriteFile(const WriteFile&) = delete;
