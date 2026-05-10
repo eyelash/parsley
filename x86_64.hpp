@@ -75,6 +75,9 @@ public:
 	std::int8_t scale;
 	std::int32_t displacement;
 	constexpr AddressComputation(std::int8_t base, std::int8_t index, std::int8_t scale, std::int32_t displacement): base(base), index(index), scale(scale), displacement(displacement) {}
+	constexpr AddressComputation(Register64 base): AddressComputation(base, RIZ, S1, 0) {}
+	constexpr AddressComputation(ScaledIndex scaled_index): AddressComputation(-1, scaled_index.index, scaled_index.scale, 0) {}
+	constexpr AddressComputation(std::int32_t displacement): AddressComputation(-1, RIZ, S1, displacement) {}
 	constexpr AddressComputation operator +(std::int32_t displacement) const {
 		return AddressComputation(base, index, scale, this->displacement + displacement);
 	}
@@ -99,18 +102,11 @@ constexpr AddressComputation operator +(ScaledIndex scaled_index, std::int32_t d
 constexpr Address ADDR(Register64 base, Register64 index, Scale scale = S1, std::int32_t displacement = 0) {
 	return Address(base, index, scale, displacement);
 }
-constexpr Address PTR(const AddressComputation& address_computation) {
-	return Address(address_computation.base, address_computation.index, address_computation.scale, address_computation.displacement);
-}
-constexpr Address PTR(ScaledIndex scaled_index) {
-	return Address(-1, scaled_index.index, scaled_index.scale, 0);
-}
-constexpr Address PTR(Register64 base) {
-	return Address(base, RIZ, S1, 0);
-}
-constexpr Address PTR(std::int32_t displacement) {
-	return Address(-1, RIZ, S1, displacement);
-}
+constexpr struct {
+	constexpr Address operator [](const AddressComputation& address_computation) const {
+		return Address(address_computation.base, address_computation.index, address_computation.scale, address_computation.displacement);
+	}
+} PTR;
 
 class Assembler {
 	std::vector<char> data;
