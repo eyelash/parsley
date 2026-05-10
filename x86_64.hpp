@@ -61,8 +61,55 @@ public:
 	constexpr Address(std::int8_t base, std::int8_t index, std::int8_t scale, std::int32_t displacement): base(base), index(index), scale(scale), displacement(displacement) {}
 };
 
+class ScaledIndex {
+public:
+	std::int8_t index;
+	std::int8_t scale;
+	constexpr ScaledIndex(std::int8_t index, std::int8_t scale): index(index), scale(scale) {}
+};
+
+class AddressComputation {
+public:
+	std::int8_t base;
+	std::int8_t index;
+	std::int8_t scale;
+	std::int32_t displacement;
+	constexpr AddressComputation(std::int8_t base, std::int8_t index, std::int8_t scale, std::int32_t displacement): base(base), index(index), scale(scale), displacement(displacement) {}
+	constexpr AddressComputation operator +(std::int32_t displacement) const {
+		return AddressComputation(base, index, scale, this->displacement + displacement);
+	}
+};
+
+constexpr ScaledIndex operator *(Register64 index, Scale scale) {
+	return ScaledIndex(index, scale);
+}
+constexpr AddressComputation operator +(Register64 base, ScaledIndex scaled_index) {
+	return AddressComputation(base, scaled_index.index, scaled_index.scale, 0);
+}
+constexpr AddressComputation operator +(Register64 base, Register64 index) {
+	return AddressComputation(base, index, S1, 0);
+}
+constexpr AddressComputation operator +(Register64 base, std::int32_t displacement) {
+	return AddressComputation(base, RIZ, S1, displacement);
+}
+constexpr AddressComputation operator +(ScaledIndex scaled_index, std::int32_t displacement) {
+	return AddressComputation(-1, scaled_index.index, scaled_index.scale, displacement);
+}
+
 constexpr Address ADDR(Register64 base, Register64 index, Scale scale = S1, std::int32_t displacement = 0) {
 	return Address(base, index, scale, displacement);
+}
+constexpr Address PTR(const AddressComputation& address_computation) {
+	return Address(address_computation.base, address_computation.index, address_computation.scale, address_computation.displacement);
+}
+constexpr Address PTR(ScaledIndex scaled_index) {
+	return Address(-1, scaled_index.index, scaled_index.scale, 0);
+}
+constexpr Address PTR(Register64 base) {
+	return Address(base, RIZ, S1, 0);
+}
+constexpr Address PTR(std::int32_t displacement) {
+	return Address(-1, RIZ, S1, displacement);
 }
 
 class Assembler {
