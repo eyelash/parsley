@@ -183,6 +183,56 @@ class Assembler {
 			write<std::uint8_t>(0x40 | w << 3 | r << 2 | x << 1 | b);
 		}
 	}
+	struct Opcode {
+		std::uint8_t value;
+		constexpr Opcode(std::uint8_t value): value(value) {}
+	};
+	struct Prefix {
+		std::uint8_t value;
+		constexpr Prefix(std::uint8_t value): value(value) {}
+	};
+	template <class T> struct Immediate {
+		T value;
+		constexpr Immediate(T value): value(value) {}
+	};
+	void encode(Opcode opcode) {
+		write<std::uint8_t>(opcode.value);
+	}
+	template <class T> void encode(Opcode opcode, Immediate<T> imm) {
+		encode(opcode);
+		write<T>(imm.value);
+	}
+	void encode(Opcode opcode, Register64 op1) {
+		REX(1, 0, 0, op1 >> 3);
+		write<std::uint8_t>(opcode.value | (op1 & 7));
+	}
+	template <class T> void encode(Opcode opcode, Register64 op1, Immediate<T> imm) {
+		encode(opcode, op1);
+		write<T>(imm.value);
+	}
+	void encode(Opcode opcode, std::uint8_t op1, Register32 op2) {
+		REX(0, op1 >> 3, 0, op2 >> 3);
+		encode(opcode);
+		RM(op1, op2);
+	}
+	void encode(Opcode opcode, std::uint8_t op1, Register64 op2) {
+		REX(1, op1 >> 3, 0, op2 >> 3);
+		encode(opcode);
+		RM(op1, op2);
+	}
+	template <class T> void encode(Opcode opcode, std::uint8_t op1, Register64 op2, Immediate<T> imm) {
+		encode(opcode, op1, op2);
+		write<T>(imm.value);
+	}
+	void encode(Opcode opcode, std::uint8_t op1, Address op2) {
+		REX(1, op1 >> 3, op2.index >> 3, op2.base == -1 ? 0 : op2.base >> 3);
+		encode(opcode);
+		RM(op1, op2);
+	}
+	template <class... A> void encode(Prefix prefix, A&&... a) {
+		write<std::uint8_t>(prefix.value);
+		encode(std::forward<A>(a)...);
+	}
 public:
 	std::size_t get_position() const {
 		return data.size();
@@ -191,17 +241,19 @@ public:
 		return data;
 	}
 	void MOV(Register64 dst, Register64 src) {
-		REX(1, dst >> 3, 0, src >> 3);
-		opcode(0x8B);
-		RM(dst, src);
+		encode(Opcode(0x8B), dst, src);
+	}
+	void MOV(Register64 dst, Address src) {
+		encode(Opcode(0x8B), dst, src);
+	}
+	void MOV(Address dst, Register64 src) {
+		encode(Opcode(0x89), src, dst);
 	}
 	void MOV(Register64 dst, std::uint64_t imm) {
-		REX(1, 0, 0, dst >> 3);
-		opcode(0xB8 | dst & 7);
-		write<std::uint64_t>(imm);
+		encode(Opcode(0xB8), dst, Immediate<std::uint64_t>(imm));
 	}
 	void SYSCALL() {
-		opcode_0F(0x05);
+		encode(Prefix(0x0F), Opcode(0x05));
 	}
 };
 
