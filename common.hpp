@@ -78,7 +78,7 @@ public:
 	constexpr Tag() {}
 };
 
-template <class T> class IntegralIterator {
+template <class T> class ArithmeticIterator {
 	T t;
 public:
 	using iterator_category = std::random_access_iterator_tag;
@@ -86,64 +86,64 @@ public:
 	using difference_type = T;
 	using reference = T;
 	using pointer = void;
-	constexpr IntegralIterator(): t() {}
-	constexpr IntegralIterator(T t): t(t) {}
+	constexpr ArithmeticIterator(): t() {}
+	constexpr ArithmeticIterator(T t): t(t) {}
 	constexpr T operator *() const {
 		return t;
 	}
 	constexpr T operator [](T i) const {
 		return t + i;
 	}
-	IntegralIterator& operator ++() {
+	ArithmeticIterator& operator ++() {
 		++t;
 		return *this;
 	}
-	IntegralIterator& operator --() {
+	ArithmeticIterator& operator --() {
 		--t;
 		return *this;
 	}
-	IntegralIterator operator ++(int) {
-		return IntegralIterator(t++);
+	ArithmeticIterator operator ++(int) {
+		return ArithmeticIterator(t++);
 	}
-	IntegralIterator operator --(int) {
-		return IntegralIterator(t--);
+	ArithmeticIterator operator --(int) {
+		return ArithmeticIterator(t--);
 	}
-	IntegralIterator& operator +=(T rhs) {
+	ArithmeticIterator& operator +=(T rhs) {
 		t += rhs;
 		return *this;
 	}
-	IntegralIterator& operator -=(T rhs) {
+	ArithmeticIterator& operator -=(T rhs) {
 		t -= rhs;
 		return *this;
 	}
-	friend constexpr IntegralIterator operator +(IntegralIterator lhs, T rhs) {
-		return IntegralIterator(lhs.t + rhs);
+	friend constexpr ArithmeticIterator operator +(ArithmeticIterator lhs, T rhs) {
+		return ArithmeticIterator(lhs.t + rhs);
 	}
-	friend constexpr IntegralIterator operator +(T lhs, IntegralIterator rhs) {
-		return IntegralIterator(lhs + rhs.t);
+	friend constexpr ArithmeticIterator operator +(T lhs, ArithmeticIterator rhs) {
+		return ArithmeticIterator(lhs + rhs.t);
 	}
-	friend constexpr IntegralIterator operator -(IntegralIterator lhs, T rhs) {
-		return IntegralIterator(lhs.t - rhs);
+	friend constexpr ArithmeticIterator operator -(ArithmeticIterator lhs, T rhs) {
+		return ArithmeticIterator(lhs.t - rhs);
 	}
-	friend constexpr T operator -(IntegralIterator lhs, IntegralIterator rhs) {
+	friend constexpr T operator -(ArithmeticIterator lhs, ArithmeticIterator rhs) {
 		return lhs.t - rhs.t;
 	}
-	friend constexpr bool operator ==(IntegralIterator lhs, IntegralIterator rhs) {
+	friend constexpr bool operator ==(ArithmeticIterator lhs, ArithmeticIterator rhs) {
 		return lhs.t == rhs.t;
 	}
-	friend constexpr bool operator !=(IntegralIterator lhs, IntegralIterator rhs) {
+	friend constexpr bool operator !=(ArithmeticIterator lhs, ArithmeticIterator rhs) {
 		return lhs.t != rhs.t;
 	}
-	friend constexpr bool operator <(IntegralIterator lhs, IntegralIterator rhs) {
+	friend constexpr bool operator <(ArithmeticIterator lhs, ArithmeticIterator rhs) {
 		return lhs.t < rhs.t;
 	}
-	friend constexpr bool operator <=(IntegralIterator lhs, IntegralIterator rhs) {
+	friend constexpr bool operator <=(ArithmeticIterator lhs, ArithmeticIterator rhs) {
 		return lhs.t <= rhs.t;
 	}
-	friend constexpr bool operator >(IntegralIterator lhs, IntegralIterator rhs) {
+	friend constexpr bool operator >(ArithmeticIterator lhs, ArithmeticIterator rhs) {
 		return lhs.t > rhs.t;
 	}
-	friend constexpr bool operator >=(IntegralIterator lhs, IntegralIterator rhs) {
+	friend constexpr bool operator >=(ArithmeticIterator lhs, ArithmeticIterator rhs) {
 		return lhs.t >= rhs.t;
 	}
 };
@@ -178,13 +178,13 @@ public:
 template <class T> Range<typename std::vector<T>::const_iterator> range(const std::vector<T>& v) {
 	return Range<typename std::vector<T>::const_iterator>(v.begin(), v.end());
 }
-template <class T> constexpr std::enable_if_t<std::is_integral<T>::value, Range<IntegralIterator<T>>> range(T begin_, T end_) {
-	return Range<IntegralIterator<T>>(IntegralIterator<T>(begin_), IntegralIterator<T>(end_));
+template <class T> constexpr std::enable_if_t<std::is_arithmetic<T>::value, Range<ArithmeticIterator<T>>> range(T begin_, T end_) {
+	return Range<ArithmeticIterator<T>>(ArithmeticIterator<T>(begin_), ArithmeticIterator<T>(end_));
 }
-template <class T> constexpr std::enable_if_t<std::is_integral<T>::value, Range<IntegralIterator<T>>> range(T end_) {
-	return Range<IntegralIterator<T>>(IntegralIterator<T>(), IntegralIterator<T>(end_));
+template <class T> constexpr std::enable_if_t<std::is_arithmetic<T>::value, Range<ArithmeticIterator<T>>> range(T end_) {
+	return Range<ArithmeticIterator<T>>(ArithmeticIterator<T>(), ArithmeticIterator<T>(end_));
 }
-template <class I> std::enable_if_t<!std::is_integral<I>::value, Range<I>> range(I begin_, I end_) {
+template <class I> std::enable_if_t<!std::is_arithmetic<I>::value, Range<I>> range(I begin_, I end_) {
 	return Range<I>(begin_, end_);
 }
 
