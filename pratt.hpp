@@ -76,10 +76,7 @@ template <class T, class P> constexpr Postfix<T, P> postfix(P p) {
 template <class... P> constexpr PrattLevel<P...> pratt_level(P... p) {
 	return PrattLevel<P...>(p...);
 }
-template <class T, class... P> constexpr Pratt<T, P...> pratt_(P... p) {
-	return Pratt<T, P...>(p...);
-}
-template <class T, class... P> constexpr auto pratt(P... p) {
+template <class T, class... P> constexpr Pratt<T, P...> pratt(P... p) {
 	return Pratt<T, P...>(p...);
 }
 

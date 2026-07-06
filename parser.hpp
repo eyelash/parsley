@@ -3,8 +3,8 @@
 #include "common.hpp"
 #include "printer.hpp"
 
-#define DECLARE_PARSER(name) struct name##_t; constexpr auto name = parser::reference<name##_t>();
-#define DEFINE_PARSER(name, impl) struct name##_t { static constexpr auto get_parser() -> decltype(impl)& { return impl; } };
+#define DECLARE_PARSER(name) struct name##_t; constexpr parser::Reference_<name##_t> name;
+#define DEFINE_PARSER(name, impl) struct name##_t { static constexpr auto parser = impl; }; constexpr decltype(name##_t::parser) name##_t::parser;
 
 namespace parser {
 
@@ -66,6 +66,9 @@ template <class F> class CharClass {
 public:
 	F f;
 	constexpr CharClass(F f): f(f) {}
+	constexpr bool operator ()(char c) const {
+		return f(c);
+	}
 };
 
 class Char {
@@ -334,7 +337,7 @@ template <class... P> constexpr Sequence<P...> sequence(P... p) {
 template <class... P> constexpr Choice<P...> choice(P... p) {
 	return Choice<P...>(p...);
 }
-constexpr auto empty() {
+constexpr Sequence<> empty() {
 	return sequence();
 }
 template <class P> constexpr Repetition<P> repetition(P p) {
@@ -381,9 +384,6 @@ constexpr Error_ error(const StringView& s) {
 }
 constexpr Expect expect(const StringView& s) {
 	return Expect(s);
-}
-template <class T> constexpr Reference_<T> reference() {
-	return Reference_<T>();
 }
 
 template <class F, class C> Result parse_impl(const CharClass<F>& p, Context& context, const C& callback) {
@@ -543,7 +543,7 @@ template <class C> Result parse_impl(const Expect& p, Context& context, const C&
 }
 
 template <class T, class C> Result parse_impl(const Reference_<T>& p, Context& context, const C& callback) {
-	return parse_impl(T::get_parser(), context, callback);
+	return parse_impl(T::parser, context, callback);
 }
 
 }
