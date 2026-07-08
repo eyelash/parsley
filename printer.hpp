@@ -161,51 +161,56 @@ template <class... T> constexpr Format<T...> format(const char* s, T... t) {
 	return Format<T...>(s, t...);
 }
 
-template <class T> constexpr auto bold(T&& t) {
-	return print_tuple("\x1B[1m", std::forward<T>(t), "\x1B[22m");
-}
+class Bold {
+public:
+	constexpr Bold() {}
+	template <class P> constexpr auto operator ()(P p) const {
+		return print_tuple("\x1B[1m", p, "\x1B[22m");
+	}
+};
 class Red {
 public:
 	constexpr Red() {}
-	template <class T> constexpr auto operator ()(T&& t) const {
-		return print_tuple("\x1B[31m", std::forward<T>(t), "\x1B[39m");
+	template <class P> constexpr auto operator ()(P p) const {
+		return print_tuple("\x1B[31m", p, "\x1B[39m");
 	}
 };
 class Green {
 public:
 	constexpr Green() {}
-	template <class T> constexpr auto operator ()(T&& t) const {
-		return print_tuple("\x1B[32m", std::forward<T>(t), "\x1B[39m");
+	template <class P> constexpr auto operator ()(P p) const {
+		return print_tuple("\x1B[32m", p, "\x1B[39m");
 	}
 };
 class Yellow {
 public:
 	constexpr Yellow() {}
-	template <class T> constexpr auto operator ()(T&& t) const {
-		return print_tuple("\x1B[33m", std::forward<T>(t), "\x1B[39m");
+	template <class P> constexpr auto operator ()(P p) const {
+		return print_tuple("\x1B[33m", p, "\x1B[39m");
 	}
 };
 class Blue {
 public:
 	constexpr Blue() {}
-	template <class T> constexpr auto operator ()(T&& t) const {
-		return print_tuple("\x1B[34m", std::forward<T>(t), "\x1B[39m");
+	template <class P> constexpr auto operator ()(P p) const {
+		return print_tuple("\x1B[34m", p, "\x1B[39m");
 	}
 };
 class Magenta {
 public:
 	constexpr Magenta() {}
-	template <class T> constexpr auto operator ()(T&& t) const {
-		return print_tuple("\x1B[35m", std::forward<T>(t), "\x1B[39m");
+	template <class P> constexpr auto operator ()(P p) const {
+		return print_tuple("\x1B[35m", p, "\x1B[39m");
 	}
 };
 class Cyan {
 public:
 	constexpr Cyan() {}
-	template <class T> constexpr auto operator ()(T&& t) const {
-		return print_tuple("\x1B[36m", std::forward<T>(t), "\x1B[39m");
+	template <class P> constexpr auto operator ()(P p) const {
+		return print_tuple("\x1B[36m", p, "\x1B[39m");
 	}
 };
+constexpr Bold bold;
 constexpr Red red;
 constexpr Green green;
 constexpr Yellow yellow;
