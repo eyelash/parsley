@@ -53,7 +53,7 @@ inline void print_impl(const char* s, Context& context) {
 
 inline void print_impl(const std::string& s, Context& context) = delete;
 
-template <class P> std::enable_if_t<is_printer<P>::value> print_impl(const P& p, Context& context) {
+template <class P> enable_if_t<is_printer<P>::value> print_impl(const P& p, Context& context) {
 	p.print(context);
 }
 

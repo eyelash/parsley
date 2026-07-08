@@ -8,6 +8,9 @@
 #include <vector>
 #include <iterator>
 
+template <class...> using void_t = void;
+template <bool B, class T = void> using enable_if_t = typename std::enable_if<B, T>::type;
+
 class Unit {
 public:
 	constexpr Unit() {}
@@ -178,13 +181,13 @@ public:
 template <class T> Range<typename std::vector<T>::const_iterator> range(const std::vector<T>& v) {
 	return Range<typename std::vector<T>::const_iterator>(v.begin(), v.end());
 }
-template <class T> constexpr std::enable_if_t<std::is_arithmetic<T>::value, Range<ArithmeticIterator<T>>> range(T begin_, T end_) {
+template <class T> constexpr enable_if_t<std::is_arithmetic<T>::value, Range<ArithmeticIterator<T>>> range(T begin_, T end_) {
 	return Range<ArithmeticIterator<T>>(ArithmeticIterator<T>(begin_), ArithmeticIterator<T>(end_));
 }
-template <class T> constexpr std::enable_if_t<std::is_arithmetic<T>::value, Range<ArithmeticIterator<T>>> range(T end_) {
+template <class T> constexpr enable_if_t<std::is_arithmetic<T>::value, Range<ArithmeticIterator<T>>> range(T end_) {
 	return Range<ArithmeticIterator<T>>(ArithmeticIterator<T>(), ArithmeticIterator<T>(end_));
 }
-template <class I> std::enable_if_t<!std::is_arithmetic<I>::value, Range<I>> range(I begin_, I end_) {
+template <class I> enable_if_t<!std::is_arithmetic<I>::value, Range<I>> range(I begin_, I end_) {
 	return Range<I>(begin_, end_);
 }
 

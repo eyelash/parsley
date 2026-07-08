@@ -281,16 +281,16 @@ template <class T0, class... T> class TupleCollector<T0, T...> {
 	TupleCollector<T...> tail;
 public:
 	TupleCollector() {}
-	template <class A> std::enable_if_t<std::is_assignable<T0&, A>::value> push(A&& a) {
+	template <class A> enable_if_t<std::is_assignable<T0&, A>::value> push(A&& a) {
 		head = std::forward<A>(a);
 	}
-	template <class A> std::enable_if_t<!std::is_assignable<T0&, A>::value> push(A&& a) {
+	template <class A> enable_if_t<!std::is_assignable<T0&, A>::value> push(A&& a) {
 		tail.push(std::forward<A>(a));
 	}
-	template <class A, std::size_t I> std::enable_if_t<I == 0> push(TupleIndex<I>, A&& a) {
+	template <class A, std::size_t I> enable_if_t<I == 0> push(TupleIndex<I>, A&& a) {
 		head = std::forward<A>(a);
 	}
-	template <class A, std::size_t I> std::enable_if_t<I != 0> push(TupleIndex<I>, A&& a) {
+	template <class A, std::size_t I> enable_if_t<I != 0> push(TupleIndex<I>, A&& a) {
 		tail.push(TupleIndex<I - 1>(), std::forward<A>(a));
 	}
 	template <class C, class... A> void retrieve(const C& callback, A&&... a) {
