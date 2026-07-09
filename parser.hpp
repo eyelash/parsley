@@ -4,7 +4,7 @@
 #include "printer.hpp"
 
 #define DECLARE_PARSER(name) struct name##_t; constexpr parser::Reference_<name##_t> name;
-#define DEFINE_PARSER(name, impl) struct name##_t { static constexpr auto parser = impl; }; constexpr decltype(name##_t::parser) name##_t::parser;
+#define DEFINE_PARSER(name, ...) struct name##_t { static constexpr auto parser = __VA_ARGS__; }; constexpr decltype(name##_t::parser) name##_t::parser;
 
 namespace parser {
 
