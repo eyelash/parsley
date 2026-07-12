@@ -129,6 +129,32 @@ class Path {
 		}
 		return StringView(path.data() + i, file_name_end - i);
 	}
+	static std::size_t get_extension(const std::string& path) {
+		const std::size_t start = get_start(path);
+		std::size_t i = path.size();
+		while (i > start && !is_separator(path[i - 1])) {
+			if (path[i - 1] == '.') {
+				return i - 1;
+			}
+			--i;
+		}
+		return path.size();
+	}
+	static void set_extension(std::string& path, const StringView& extension) {
+		std::size_t i = get_extension(path);
+		if (!extension) {
+			path.resize(i);
+			return;
+		}
+		if (i < path.size()) {
+			++i;
+			path.replace(i, path.size() - i, extension.data(), extension.size());
+		}
+		else {
+			path.push_back('.');
+			path.append(extension.data(), extension.size());
+		}
+	}
 	std::string path;
 public:
 	Path() {}
@@ -160,6 +186,25 @@ public:
 	}
 	StringView file_name() const {
 		return get_file_name(path);
+	}
+	StringView extension() const {
+		std::size_t i = get_extension(path);
+		if (i < path.size()) {
+			++i;
+			return StringView(path.data() + i, path.size() - i);
+		}
+		else {
+			return StringView();
+		}
+	}
+	Path with_extension(const StringView& extension = StringView()) && {
+		set_extension(path, extension);
+		return Path(std::move(path));
+	}
+	Path with_extension(const StringView& extension = StringView()) const& {
+		std::string new_path = path;
+		set_extension(new_path, extension);
+		return Path(std::move(new_path));
 	}
 	Path normalize() && {
 		normalize(path);
