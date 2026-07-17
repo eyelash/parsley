@@ -10,19 +10,19 @@ template <class P> static constexpr auto op(P p) {
 	return sequence(white_space, ignore(p), white_space);
 }
 
-static unsigned int add(unsigned int lhs, unsigned int rhs) {
+constexpr unsigned int add(unsigned int lhs, unsigned int rhs) {
 	return lhs + rhs;
 }
-static unsigned int subtract(unsigned int lhs, unsigned int rhs) {
+constexpr unsigned int subtract(unsigned int lhs, unsigned int rhs) {
 	return lhs - rhs;
 }
-static unsigned int multiply(unsigned int lhs, unsigned int rhs) {
+constexpr unsigned int multiply(unsigned int lhs, unsigned int rhs) {
 	return lhs * rhs;
 }
-static unsigned int divide(unsigned int lhs, unsigned int rhs) {
+constexpr unsigned int divide(unsigned int lhs, unsigned int rhs) {
 	return lhs / rhs;
 }
-static unsigned int negate(unsigned int x) {
+constexpr unsigned int negate(unsigned int x) {
 	return -x;
 }
 
@@ -51,6 +51,14 @@ public:
 	template <BinaryOperation operation> void push(BinaryOperationTag<operation>, unsigned int n) {
 		this->n = operation(this->n, n);
 	}
+	// unary prefix
+	template <UnaryOperation operation> void push(UnaryOperationTag<operation>, unsigned int n) {
+		this->n = operation(n);
+	}
+	// unary postfix
+	template <UnaryOperation operation> void push(UnaryOperationTag<operation>) {
+		this->n = operation(this->n);
+	}
 	void set_location(const SourceLocation& location) {}
 	template <class C> void retrieve(const C& callback) {
 		callback.push(n);
@@ -58,11 +66,13 @@ public:
 };
 
 template <BinaryOperation operation> using InfixCollector = MapCollector<TagMapper<BinaryOperationTag<operation>>, TupleCollector<unsigned int>>;
+template <UnaryOperation operation> using PrefixCollector = MapCollector<TagMapper<UnaryOperationTag<operation>>, TupleCollector<unsigned int>>;
+template <UnaryOperation operation> using PostfixCollector = MapCollector<TagMapper<UnaryOperationTag<operation>>, TupleCollector<>>;
 
 constexpr auto number = collect<IntCollector>(one_or_more(range('0', '9')));
 
 DECLARE_PARSER(expression)
-constexpr auto expression_impl = pratt<IntCollector>(
+DEFINE_PARSER(expression, pratt<IntCollector>(
 	pratt_level(
 		infix_ltr<InfixCollector<add>>(op('+')),
 		infix_ltr<InfixCollector<subtract>>(op('-'))
@@ -72,14 +82,16 @@ constexpr auto expression_impl = pratt<IntCollector>(
 		infix_ltr<InfixCollector<divide>>(op('/'))
 	),
 	pratt_level(
+		prefix<PrefixCollector<negate>>(op('-'))
+	),
+	pratt_level(
 		terminal(choice(
 			number,
 			sequence(ignore('('), white_space, expression, white_space, expect(")")),
 			error("expected an expression")
 		))
 	)
-);
-DEFINE_PARSER(expression, expression_impl)
+))
 
 constexpr auto program = sequence(
 	white_space,
