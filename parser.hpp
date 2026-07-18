@@ -298,6 +298,8 @@ public:
 	}
 };
 
+using EmptyCollector = TupleCollector<>;
+
 template <class T> class VectorCollector {
 	std::vector<T> vector;
 public:
