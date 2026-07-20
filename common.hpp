@@ -11,6 +11,18 @@
 template <class...> using void_t = void;
 template <bool B, class T = void> using enable_if_t = typename std::enable_if<B, T>::type;
 
+template <class T> void make_vector_(std::vector<T>& v) {}
+template <class T, class A0, class... A> void make_vector_(std::vector<T>& v, A0&& a0, A&&... a) {
+	v.push_back(std::forward<A0>(a0));
+	make_vector_(v, std::forward<A>(a)...);
+}
+template <class T, class... A> std::vector<T> make_vector(A&&... a) {
+	std::vector<T> v;
+	v.reserve(sizeof...(A));
+	make_vector_(v, std::forward<A>(a)...);
+	return v;
+}
+
 class Unit {
 public:
 	constexpr Unit() {}
