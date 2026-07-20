@@ -88,6 +88,10 @@ public:
 	}
 };
 
+template <class T, class U> T* as(const Reference<U>& u) {
+	return as<T>(static_cast<U*>(u));
+}
+
 template <class T> class Tag {
 public:
 	constexpr Tag() {}
