@@ -161,63 +161,6 @@ template <class... T> constexpr Format<T...> format(const char* s, T... t) {
 	return Format<T...>(s, t...);
 }
 
-class Bold {
-public:
-	constexpr Bold() {}
-	template <class P> constexpr auto operator ()(P p) const {
-		return print_tuple("\x1B[1m", p, "\x1B[22m");
-	}
-};
-class Red {
-public:
-	constexpr Red() {}
-	template <class P> constexpr auto operator ()(P p) const {
-		return print_tuple("\x1B[31m", p, "\x1B[39m");
-	}
-};
-class Green {
-public:
-	constexpr Green() {}
-	template <class P> constexpr auto operator ()(P p) const {
-		return print_tuple("\x1B[32m", p, "\x1B[39m");
-	}
-};
-class Yellow {
-public:
-	constexpr Yellow() {}
-	template <class P> constexpr auto operator ()(P p) const {
-		return print_tuple("\x1B[33m", p, "\x1B[39m");
-	}
-};
-class Blue {
-public:
-	constexpr Blue() {}
-	template <class P> constexpr auto operator ()(P p) const {
-		return print_tuple("\x1B[34m", p, "\x1B[39m");
-	}
-};
-class Magenta {
-public:
-	constexpr Magenta() {}
-	template <class P> constexpr auto operator ()(P p) const {
-		return print_tuple("\x1B[35m", p, "\x1B[39m");
-	}
-};
-class Cyan {
-public:
-	constexpr Cyan() {}
-	template <class P> constexpr auto operator ()(P p) const {
-		return print_tuple("\x1B[36m", p, "\x1B[39m");
-	}
-};
-constexpr Bold bold;
-constexpr Red red;
-constexpr Green green;
-constexpr Yellow yellow;
-constexpr Blue blue;
-constexpr Magenta magenta;
-constexpr Cyan cyan;
-
 class Number {
 	unsigned int n;
 public:
@@ -277,6 +220,36 @@ public:
 constexpr Octal print_octal(unsigned int n, unsigned int digits = 1) {
 	return Octal(n, digits);
 }
+
+template <class P> class SGRPrinter {
+	unsigned int enable;
+	unsigned int disable;
+	P p;
+public:
+	constexpr SGRPrinter(unsigned int enable, unsigned int disable, P p): enable(enable), disable(disable), p(p) {}
+	void print(Context& context) const {
+		constexpr const char* CSI = "\x1B[";
+		print_impl(print_tuple(CSI, print_number(enable), 'm', p, CSI, print_number(disable), 'm'), context);
+	}
+};
+
+class SGRFunctor {
+	unsigned int enable;
+	unsigned int disable;
+public:
+	constexpr SGRFunctor(unsigned int enable, unsigned int disable): enable(enable), disable(disable) {}
+	template <class P> constexpr SGRPrinter<P> operator ()(P p) const {
+		return SGRPrinter<P>(enable, disable, p);
+	}
+};
+
+constexpr auto bold = SGRFunctor(1, 22);
+constexpr auto red = SGRFunctor(31, 39);
+constexpr auto green = SGRFunctor(32, 39);
+constexpr auto yellow = SGRFunctor(33, 39);
+constexpr auto blue = SGRFunctor(34, 39);
+constexpr auto magenta = SGRFunctor(35, 39);
+constexpr auto cyan = SGRFunctor(36, 39);
 
 template <class P> class Repeat {
 	P p;
