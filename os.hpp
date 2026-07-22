@@ -169,6 +169,9 @@ public:
 	operator StringView() const {
 		return path.empty() ? StringView() : StringView(path);
 	}
+	bool operator <(const Path& p) const {
+		return path < p.path;
+	}
 	bool is_absolute() const {
 		return is_absolute(path);
 	}
