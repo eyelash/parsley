@@ -314,17 +314,16 @@ constexpr Plural print_plural(const char* word, unsigned int count) {
 struct DiagnosticType {
 	struct Error {
 		static constexpr const char* severity = "error";
-		using Color = Red;
+		static constexpr auto& color = red;
 	};
 	struct Warning {
 		static constexpr const char* severity = "warning";
-		using Color = Yellow;
+		static constexpr auto& color = yellow;
 	};
 };
 
 template <class Type, class P> void print_diagnostic(Context& context, const P& p) {
-	const typename Type::Color color;
-	print_impl(bold(color(format("%: ", Type::severity))), context);
+	print_impl(bold(Type::color(format("%: ", Type::severity))), context);
 	print_impl(p, context);
 	context.print('\n');
 }
@@ -335,7 +334,6 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 	}
 }
 template <class Type, class P> void print_diagnostic(Context& context, const StringView& path, const StringView& source, SourceLocation location, const P& p) {
-	const typename Type::Color color;
 	location.begin = std::min(location.begin, source.size());
 	location.end = std::min(std::max(location.end, location.begin + 1), source.size() + 1);
 	unsigned int line_number = 1;
@@ -400,7 +398,7 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 			context.print('\n');
 
 			print_impl(format(" % | ", repeat(' ', line_number_width)), context);
-			print_impl(print_tuple(repeat(' ', spaces), bold(color(repeat('^', carets)))), context);
+			print_impl(print_tuple(repeat(' ', spaces), bold(Type::color(repeat('^', carets)))), context);
 			context.print('\n');
 
 		}

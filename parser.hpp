@@ -184,10 +184,10 @@ public:
 class Ignore {
 public:
 	constexpr Ignore() {}
-	template <class... A> constexpr void push(A&&...) const {}
-	constexpr void set_location(const SourceLocation&) const {}
-	template <class C> constexpr void retrieve(const C& callback) const {}
-	template <class C, class... A> static constexpr void map(const C& callback, A&&...) {}
+	template <class... A> void push(A&&...) const {}
+	void set_location(const SourceLocation&) const {}
+	template <class C> void retrieve(const C& callback) const {}
+	template <class C, class... A> static void map(const C& callback, A&&...) {}
 };
 
 template <class T> class GetValueCallback {
@@ -257,7 +257,7 @@ using IdentityMapper = CompositionMapper<>;
 template <class T, T value> class ConstantCollector {
 public:
 	constexpr ConstantCollector() {}
-	template <class... A> constexpr void push(A&&...) const {}
+	template <class... A> void push(A&&...) const {}
 	template <class C> void retrieve(const C& callback) {
 		callback.push(value);
 	}
