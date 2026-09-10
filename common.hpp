@@ -92,6 +92,16 @@ template <class T, class U> T* as(const Reference<U>& u) {
 	return as<T>(static_cast<U*>(u));
 }
 
+class MoveOnly {
+public:
+	MoveOnly() = default;
+	MoveOnly(const MoveOnly&) = delete;
+	MoveOnly(MoveOnly&&) = default;
+	~MoveOnly() = default;
+	MoveOnly& operator =(const MoveOnly&) = delete;
+	MoveOnly& operator =(MoveOnly&&) = default;
+};
+
 template <class T> class Tag {
 public:
 	constexpr Tag() {}
