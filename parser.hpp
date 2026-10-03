@@ -62,15 +62,6 @@ enum Result: char {
 	ERROR
 };
 
-template <class F> class CharClass {
-public:
-	F f;
-	constexpr CharClass(F f): f(f) {}
-	constexpr bool operator ()(char c) const {
-		return f(c);
-	}
-};
-
 class Char {
 public:
 	char c;
@@ -323,15 +314,14 @@ public:
 	}
 };
 
-template <class F> constexpr CharClass<F> char_class(F f) {
-	return CharClass<F>(f);
-}
+template <class F, class = bool> struct is_char_class: std::false_type {};
+template <class F> struct is_char_class<F, decltype(std::declval<const F&>()(std::declval<char>()))>: std::true_type {};
 
-constexpr CharClass<AnyChar> any_char() {
-	return CharClass<AnyChar>(AnyChar());
+constexpr AnyChar any_char() {
+	return AnyChar();
 }
-constexpr CharClass<CharRange> range(char first, char last) {
-	return CharClass<CharRange>(CharRange(first, last));
+constexpr CharRange range(char first, char last) {
+	return CharRange(first, last);
 }
 template <class... P> constexpr Sequence<P...> sequence(P... p) {
 	return Sequence<P...>(p...);
@@ -388,8 +378,8 @@ constexpr Expect expect(const StringView& s) {
 	return Expect(s);
 }
 
-template <class F, class C> Result parse_impl(const CharClass<F>& p, Context& context, const C& callback) {
-	if (context && p.f(*context)) {
+template <class F, class C> enable_if_t<is_char_class<F>::value, Result> parse_impl(const F& f, Context& context, const C& callback) {
+	if (context && f(*context)) {
 		callback.push(*context);
 		++context;
 		return SUCCESS;
@@ -398,11 +388,7 @@ template <class F, class C> Result parse_impl(const CharClass<F>& p, Context& co
 }
 
 template <class C> Result parse_impl(char c, Context& context, const C& callback) {
-	return parse_impl(CharClass<Char>(Char(c)), context, callback);
-}
-
-template <class C> Result parse_impl(bool (*f)(char), Context& context, const C& callback) {
-	return parse_impl(CharClass<bool (*)(char)>(f), context, callback);
+	return parse_impl(Char(c), context, callback);
 }
 
 template <class C> Result parse_impl(const StringView& s, Context& context, const C& callback) {
