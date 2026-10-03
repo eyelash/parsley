@@ -262,7 +262,7 @@ public:
 template <class... T> class TupleCollector;
 template <> class TupleCollector<> {
 public:
-	constexpr TupleCollector() {}
+	TupleCollector() {}
 	template <class C, class... A> void retrieve(const C& callback, A&&... a) {
 		callback.push(std::forward<A>(a)...);
 	}
@@ -271,7 +271,7 @@ template <class T0, class... T> class TupleCollector<T0, T...> {
 	T0 head;
 	TupleCollector<T...> tail;
 public:
-	TupleCollector() {}
+	TupleCollector(): head() {}
 	template <class A> enable_if_t<std::is_assignable<T0&, A>::value> push(A&& a) {
 		head = std::forward<A>(a);
 	}
@@ -294,6 +294,7 @@ using EmptyCollector = TupleCollector<>;
 template <class T> class VectorCollector {
 	std::vector<T> vector;
 public:
+	VectorCollector() {}
 	void push(T&& t) {
 		vector.push_back(std::move(t));
 	}

@@ -57,60 +57,6 @@ template <class P> enable_if_t<is_printer<P>::value> print_impl(const P& p, Cont
 	p.print(context);
 }
 
-template <class P> class Ln {
-	P p;
-public:
-	constexpr Ln(P p): p(p) {}
-	void print(Context& context) const {
-		print_impl(p, context);
-		context.print('\n');
-	}
-};
-template <class P> constexpr Ln<P> ln(P p) {
-	return Ln<P>(p);
-}
-constexpr char ln() {
-	return '\n';
-}
-
-template <class P> class Indent {
-	P p;
-public:
-	constexpr Indent(P p): p(p) {}
-	void print(Context& context) const {
-		context.increase_indentation();
-		print_impl(p, context);
-		context.decrease_indentation();
-	}
-};
-template <class P> constexpr Indent<P> indented(P p) {
-	return Indent<P>(p);
-}
-
-template <class P> class Reference_ {
-	const P* p;
-public:
-	constexpr Reference_(const P& p): p(&p) {}
-	void print(Context& context) const {
-		print_impl(*p, context);
-	}
-};
-template <class P> constexpr Reference_<P> ref(const P& p) {
-	return Reference_<P>(p);
-}
-
-template <class F> class PrintFunctor {
-	F f;
-public:
-	constexpr PrintFunctor(F f): f(f) {}
-	void print(Context& context) const {
-		f(context);
-	}
-};
-template <class F> constexpr PrintFunctor<F> print_functor(F f) {
-	return PrintFunctor<F>(f);
-}
-
 template <class... T> class PrintTuple;
 template <> class PrintTuple<> {
 public:
@@ -159,6 +105,60 @@ public:
 };
 template <class... T> constexpr Format<T...> format(const char* s, T... t) {
 	return Format<T...>(s, t...);
+}
+
+template <class P> class Ln {
+	P p;
+public:
+	constexpr Ln(P p): p(p) {}
+	void print(Context& context) const {
+		print_impl(p, context);
+		context.print('\n');
+	}
+};
+template <class P> constexpr Ln<P> ln(P p) {
+	return Ln<P>(p);
+}
+constexpr Ln<PrintTuple<>> ln() {
+	return ln(print_tuple());
+}
+
+template <class P> class Indent {
+	P p;
+public:
+	constexpr Indent(P p): p(p) {}
+	void print(Context& context) const {
+		context.increase_indentation();
+		print_impl(p, context);
+		context.decrease_indentation();
+	}
+};
+template <class P> constexpr Indent<P> indented(P p) {
+	return Indent<P>(p);
+}
+
+template <class P> class Reference_ {
+	const P* p;
+public:
+	constexpr Reference_(const P& p): p(&p) {}
+	void print(Context& context) const {
+		print_impl(*p, context);
+	}
+};
+template <class P> constexpr Reference_<P> ref(const P& p) {
+	return Reference_<P>(p);
+}
+
+template <class F> class PrintFunctor {
+	F f;
+public:
+	constexpr PrintFunctor(F f): f(f) {}
+	void print(Context& context) const {
+		f(context);
+	}
+};
+template <class F> constexpr PrintFunctor<F> print_functor(F f) {
+	return PrintFunctor<F>(f);
 }
 
 class Number {
@@ -298,7 +298,7 @@ struct DiagnosticType {
 template <class Type, class P> void print_diagnostic(Context& context, const P& p) {
 	print_impl(bold(Type::color(format("%: ", Type::severity))), context);
 	print_impl(p, context);
-	context.print('\n');
+	print_impl(ln(), context);
 }
 template <class Type, class P> void print_diagnostic(Context& context, const StringView& path, const P& p) {
 	print_diagnostic<Type>(context, p);
@@ -368,11 +368,11 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 			if (i == location.begin || i + 1 == location.end) {
 				++carets;
 			}
-			context.print('\n');
+			print_impl(ln(), context);
 
 			print_impl(format(" % | ", repeat(' ', line_number_width)), context);
 			print_impl(print_tuple(repeat(' ', spaces), bold(Type::color(repeat('^', carets)))), context);
-			context.print('\n');
+			print_impl(ln(), context);
 
 		}
 		else {
@@ -421,7 +421,7 @@ template <class P> std::string print_to_string(P&& p) {
 	return s;
 }
 
-template <class Type> class Diagnostic {
+class Diagnostic {
 	Path path;
 	SourceLocation location;
 	std::string message;
@@ -429,7 +429,7 @@ public:
 	template <class P> Diagnostic(const char* path, const SourceLocation& location, P&& p): path(path), location(location), message(print_to_string(std::forward<P>(p))) {}
 	template <class P> Diagnostic(const char* path, P&& p): path(path), message(print_to_string(std::forward<P>(p))) {}
 	template <class P> Diagnostic(P&& p): message(print_to_string(std::forward<P>(p))) {}
-	void print(printer::Context& context) const {
+	template <class Type> void print(printer::Context& context) const {
 		if (path && location) {
 			MemoryMappedFile source(path);
 			printer::print_diagnostic<Type>(context, path, StringView(source.data(), source.size()), location, StringView(message));
@@ -437,13 +437,13 @@ public:
 		else {
 			printer::print_diagnostic<Type>(context, path, StringView(message));
 		}
-		context.print('\n');
+		print_impl(printer::ln(), context);
 	}
 };
 
 class Diagnostics {
-	std::vector<Diagnostic<printer::DiagnosticType::Error>> errors;
-	std::vector<Diagnostic<printer::DiagnosticType::Warning>> warnings;
+	std::vector<Diagnostic> errors;
+	std::vector<Diagnostic> warnings;
 public:
 	bool has_error() const {
 		return !errors.empty();
@@ -455,11 +455,11 @@ public:
 		warnings.emplace_back(std::forward<A>(a)...);
 	}
 	void print(printer::Context& context) const {
-		for (const Diagnostic<printer::DiagnosticType::Warning>& warning: warnings) {
-			warning.print(context);
+		for (const Diagnostic& warning: warnings) {
+			warning.print<printer::DiagnosticType::Warning>(context);
 		}
-		for (const Diagnostic<printer::DiagnosticType::Error>& error: errors) {
-			error.print(context);
+		for (const Diagnostic& error: errors) {
+			error.print<printer::DiagnosticType::Error>(context);
 		}
 	}
 	void print() const {
