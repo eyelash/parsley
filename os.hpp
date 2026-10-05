@@ -347,7 +347,7 @@ public:
 	}
 };
 
-class ReadFile: public Input {
+class File {
 	#ifdef _WIN32
 	#else
 	int fd;
@@ -355,29 +355,18 @@ class ReadFile: public Input {
 public:
 	#ifdef _WIN32
 	#else
-	ReadFile(int fd): fd(fd) {}
+	File(int fd): fd(fd) {}
+	File(): fd(-1) {}
 	#endif
-	ReadFile() {
-		#ifdef _WIN32
-		#else
-		fd = -1;
-		#endif
-	}
-	ReadFile(const char* path) {
-		#ifdef _WIN32
-		#else
-		fd = open(path, O_RDONLY | O_CLOEXEC);
-		#endif
-	}
-	ReadFile(const ReadFile&) = delete;
-	ReadFile(ReadFile&& file) {
+	File(const File&) = delete;
+	File(File&& file) {
 		#ifdef _WIN32
 		#else
 		fd = file.fd;
 		file.fd = -1;
 		#endif
 	}
-	~ReadFile() {
+	~File() {
 		#ifdef _WIN32
 		#else
 		if (fd != -1) {
@@ -385,8 +374,8 @@ public:
 		}
 		#endif
 	}
-	ReadFile& operator =(const ReadFile&) = delete;
-	ReadFile& operator =(ReadFile&& file) {
+	File& operator =(const File&) = delete;
+	File& operator =(File&& file) {
 		#ifdef _WIN32
 		#else
 		if (fd != -1) {
@@ -404,7 +393,16 @@ public:
 		return fd != -1;
 		#endif
 	}
-	std::size_t read(char* data, std::size_t size) override {
+	std::size_t size() const {
+		#ifdef _WIN32
+		return 0;
+		#else
+		struct stat s;
+		fstat(fd, &s);
+		return s.st_size;
+		#endif
+	}
+	std::size_t read(char* data, std::size_t size) {
 		#ifdef _WIN32
 		#else
 		while (true) {
@@ -419,75 +417,7 @@ public:
 		}
 		#endif
 	}
-	std::size_t size() const {
-		#ifdef _WIN32
-		return 0;
-		#else
-		struct stat s;
-		fstat(fd, &s);
-		return s.st_size;
-		#endif
-	}
-};
-
-class WriteFile: public Output {
-	#ifdef _WIN32
-	#else
-	int fd;
-	#endif
-public:
-	#ifdef _WIN32
-	#else
-	WriteFile(int fd): fd(fd) {}
-	#endif
-	WriteFile() {
-		#ifdef _WIN32
-		#else
-		fd = -1;
-		#endif
-	}
-	WriteFile(const char* path, bool executable = false) {
-		#ifdef _WIN32
-		#else
-		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, executable ? 0777 : 0666);
-		#endif
-	}
-	WriteFile(const WriteFile&) = delete;
-	WriteFile(WriteFile&& file) {
-		#ifdef _WIN32
-		#else
-		fd = file.fd;
-		file.fd = -1;
-		#endif
-	}
-	~WriteFile() {
-		#ifdef _WIN32
-		#else
-		if (fd != -1) {
-			close(fd);
-		}
-		#endif
-	}
-	WriteFile& operator =(const WriteFile&) = delete;
-	WriteFile& operator =(WriteFile&& file) {
-		#ifdef _WIN32
-		#else
-		if (fd != -1) {
-			close(fd);
-		}
-		fd = file.fd;
-		file.fd = -1;
-		#endif
-		return *this;
-	}
-	explicit operator bool() const {
-		#ifdef _WIN32
-		return false;
-		#else
-		return fd != -1;
-		#endif
-	}
-	void write(const char* data, std::size_t size) override {
+	void write(const char* data, std::size_t size) {
 		#ifdef _WIN32
 		#else
 		while (size > 0) {
@@ -502,6 +432,43 @@ public:
 			size -= result;
 		}
 		#endif
+	}
+};
+
+class ReadFile: public Input {
+	File file;
+public:
+	#ifdef _WIN32
+	#else
+	ReadFile(int fd): file(fd) {}
+	ReadFile(const char* path): file(open(path, O_RDONLY | O_CLOEXEC)) {}
+	#endif
+	ReadFile() {}
+	explicit operator bool() const {
+		return static_cast<bool>(file);
+	}
+	std::size_t size() const {
+		return file.size();
+	}
+	std::size_t read(char* data, std::size_t size) override {
+		return file.read(data, size);
+	}
+};
+
+class WriteFile: public Output {
+	File file;
+public:
+	#ifdef _WIN32
+	#else
+	WriteFile(int fd): file(fd) {}
+	WriteFile(const char* path, bool executable = false): file(open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, executable ? 0777 : 0666)) {}
+	#endif
+	WriteFile() {}
+	explicit operator bool() const {
+		return static_cast<bool>(file);
+	}
+	void write(const char* data, std::size_t size) override {
+		file.write(data, size);
 	}
 };
 
