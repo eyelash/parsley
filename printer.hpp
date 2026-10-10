@@ -161,64 +161,46 @@ template <class F> constexpr PrintFunctor<F> print_functor(F f) {
 	return PrintFunctor<F>(f);
 }
 
-class Number {
-	unsigned int n;
-public:
-	constexpr Number(unsigned int n): n(n) {}
-	void print(Context& context) const {
-		if (n >= 10) {
-			Number(n / 10).print(context);
-		}
-		context.print(static_cast<char>('0' + n % 10));
+template <class T, T base, char fill_char> class Number {
+	T n;
+	unsigned int min_width;
+	static constexpr char get_digit(T n) {
+		return n < 10 ? '0' + n : 'A' + (n - 10);
 	}
-	unsigned int get_width() const {
-		unsigned int width = 0;
-		if (n >= 10) {
-			width += Number(n / 10).get_width();
+	static void print(Context& context, T n, unsigned int min_width, unsigned int i = 1) {
+		if (n / base > 0) {
+			print(context, n / base, min_width, i + 1);
 		}
-		return width + 1;
+		else for (; i < min_width; ++i) {
+			context.print(fill_char);
+		}
+		context.print(get_digit(n % base));
+	}
+	static constexpr unsigned int get_width(T n, unsigned int i = 1) {
+		return n / base > 0 ? get_width(n / base, i + 1) : i;
+	}
+public:
+	constexpr Number(T n, unsigned int min_width): n(n), min_width(min_width) {}
+	void print(Context& context) const {
+		print(context, n, min_width);
+	}
+	constexpr unsigned int get_width() const {
+		return get_width(n);
 	}
 };
-constexpr Number print_number(unsigned int n) {
-	return Number(n);
+constexpr Number<unsigned int, 10, ' '> print_number(unsigned int n, unsigned int min_width = 0) {
+	return Number<unsigned int, 10, ' '>(n, min_width);
 }
 
-class Hexadecimal {
-	unsigned int n;
-	unsigned int digits;
-	static constexpr char get_hex(unsigned int c) {
-		return c < 10 ? '0' + c : 'A' + (c - 10);
-	}
-public:
-	constexpr Hexadecimal(unsigned int n, unsigned int digits = 1): n(n), digits(digits) {}
-	void print(Context& context) const {
-		if (n >= 16 || digits > 1) {
-			Hexadecimal(n / 16, digits > 1 ? digits - 1 : digits).print(context);
-		}
-		context.print(get_hex(n % 16));
-	}
-};
-constexpr Hexadecimal print_hexadecimal(unsigned int n, unsigned int digits = 1) {
-	return Hexadecimal(n, digits);
+constexpr Number<unsigned int, 16, '0'> print_hexadecimal(unsigned int n, unsigned int min_width = 0) {
+	return Number<unsigned int, 16, '0'>(n, min_width);
 }
-template <class T> constexpr Hexadecimal print_pointer(const T* ptr) {
-	return Hexadecimal(reinterpret_cast<std::size_t>(ptr));
+template <class T> constexpr Number<std::uintptr_t, 16, '0'> print_pointer(const T* ptr) {
+	return Number<std::uintptr_t, 16, '0'>(reinterpret_cast<std::uintptr_t>(ptr), sizeof(T*) * 2);
 }
 
-class Octal {
-	unsigned int n;
-	unsigned int digits;
-public:
-	constexpr Octal(unsigned int n, unsigned int digits = 1): n(n), digits(digits) {}
-	void print(Context& context) const {
-		if (n >= 8 || digits > 1) {
-			Octal(n / 8, digits > 1 ? digits - 1 : digits).print(context);
-		}
-		context.print(static_cast<char>('0' + n % 8));
-	}
-};
-constexpr Octal print_octal(unsigned int n, unsigned int digits = 1) {
-	return Octal(n, digits);
+constexpr Number<unsigned int, 8, '0'> print_octal(unsigned int n, unsigned int min_width = 0) {
+	return Number<unsigned int, 8, '0'>(n, min_width);
 }
 
 template <class P> class SGRPrinter {
@@ -339,9 +321,8 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 		if (line_number == first_line_number || line_number == last_line_number) {
 
 			constexpr unsigned int TAB_WIDTH = 4;
-			const unsigned int width_diff = line_number_width - print_number(line_number).get_width();
 
-			print_impl(format(" % | ", print_tuple(repeat(' ', width_diff), print_number(line_number))), context);
+			print_impl(format(" % | ", print_number(line_number, line_number_width)), context);
 			unsigned int spaces = 0;
 			unsigned int carets = 0;
 			unsigned int column = 0;
