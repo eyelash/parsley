@@ -113,7 +113,11 @@ public:
 	constexpr Ln(P p): p(p) {}
 	void print(Context& context) const {
 		print_impl(p, context);
-		context.print('\n');
+		#ifdef HTML
+		print_impl("<br/>", context);
+		#else
+		print_impl('\n', context);
+		#endif
 	}
 };
 template <class P> constexpr Ln<P> ln(P p) {
@@ -225,6 +229,36 @@ public:
 	}
 };
 
+template <class P> class HTMLSpanPrinter {
+	const char* property;
+	const char* value;
+	P p;
+public:
+	constexpr HTMLSpanPrinter(const char* property, const char* value, P p): property(property), value(value), p(p) {}
+	void print(Context& context) const {
+		print_impl(format("<span style=\"%:%\">%</span>", property, value, p), context);
+	}
+};
+
+class HTMLSpanFunctor {
+	const char* property;
+	const char* value;
+public:
+	constexpr HTMLSpanFunctor(const char* property, const char* value): property(property), value(value) {}
+	template <class P> constexpr HTMLSpanPrinter<P> operator ()(P p) const {
+		return HTMLSpanPrinter<P>(property, value, p);
+	}
+};
+
+#if HTML
+constexpr auto bold = HTMLSpanFunctor("font-weight", "bold");
+constexpr auto red = HTMLSpanFunctor("color", "red");
+constexpr auto green = HTMLSpanFunctor("color", "lime");
+constexpr auto yellow = HTMLSpanFunctor("color", "yellow");
+constexpr auto blue = HTMLSpanFunctor("color", "blue");
+constexpr auto magenta = HTMLSpanFunctor("color", "fuchsia");
+constexpr auto cyan = HTMLSpanFunctor("color", "aqua");
+#else
 constexpr auto bold = SGRFunctor(1, 22);
 constexpr auto red = SGRFunctor(31, 39);
 constexpr auto green = SGRFunctor(32, 39);
@@ -232,6 +266,7 @@ constexpr auto yellow = SGRFunctor(33, 39);
 constexpr auto blue = SGRFunctor(34, 39);
 constexpr auto magenta = SGRFunctor(35, 39);
 constexpr auto cyan = SGRFunctor(36, 39);
+#endif
 
 template <class P> class Repeat {
 	P p;
