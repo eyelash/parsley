@@ -160,6 +160,16 @@ public:
 	Path() {}
 	Path(std::string&& path): path(std::move(path)) {}
 	Path(const char* path): path(from_string(path)) {}
+	static Path current_working_directory() {
+		#ifdef _WIN32
+		return Path();
+		#else
+		char* cwd = getcwd(nullptr, 0);
+		Path path(cwd);
+		free(cwd);
+		return path;
+		#endif
+	}
 	explicit operator bool() const {
 		return !path.empty();
 	}
