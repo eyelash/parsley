@@ -10,6 +10,7 @@
 #else
 #include <unistd.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -579,6 +580,97 @@ public:
 		#endif
 		static BufferedOutput buffered_output(standard_error);
 		return buffered_output;
+	}
+};
+
+class Directory {
+	#ifdef _WIN32
+	#else
+	DIR* dir;
+	#endif
+public:
+	#ifdef _WIN32
+	#else
+	Directory(const char* path): dir(opendir(path)) {}
+	Directory(): dir(nullptr) {}
+	#endif
+	Directory(const Directory&) = delete;
+	Directory(Directory&& directory) {
+		#ifdef _WIN32
+		#else
+		dir = directory.dir;
+		directory.dir = nullptr;
+		#endif
+	}
+	~Directory() {
+		#ifdef _WIN32
+		#else
+		if (dir != nullptr) {
+			closedir(dir);
+		}
+		#endif
+	}
+	Directory& operator =(const Directory&) = delete;
+	Directory& operator =(Directory&& directory) {
+		#ifdef _WIN32
+		#else
+		if (dir != nullptr) {
+			closedir(dir);
+		}
+		dir = directory.dir;
+		directory.dir = nullptr;
+		#endif
+		return *this;
+	}
+	explicit operator bool() const {
+		#ifdef _WIN32
+		return false;
+		#else
+		return dir != nullptr;
+		#endif
+	}
+	class Iterator {
+		#ifdef _WIN32
+		#else
+		DIR* dir;
+		struct dirent* ent;
+		#endif
+	public:
+		#ifdef _WIN32
+		#else
+		Iterator(DIR* dir, struct dirent* ent): dir(dir), ent(ent) {}
+		#endif
+		bool operator !=(const Iterator& iterator) const {
+			#ifdef _WIN32
+			#else
+			return ent != iterator.ent;
+			#endif
+		}
+		const char* operator *() const {
+			#ifdef _WIN32
+			#else
+			return ent->d_name;
+			#endif
+		}
+		Iterator& operator ++() {
+			#ifdef _WIN32
+			#else
+			ent = readdir(dir);
+			#endif
+			return *this;
+		}
+	};
+	Iterator begin() const {
+		#ifdef _WIN32
+		#else
+		return Iterator(dir, readdir(dir));
+		#endif
+	}
+	Iterator end() const {
+		#ifdef _WIN32
+		#else
+		return Iterator(dir, nullptr);
+		#endif
 	}
 };
 
