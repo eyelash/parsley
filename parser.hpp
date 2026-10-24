@@ -96,9 +96,9 @@ public:
 };
 template <class P0, class... P> class Sequence<P0, P...> {
 public:
-	P0 head;
-	Sequence<P...> tail;
-	constexpr Sequence(P0 head, P... tail): head(head), tail(tail...) {}
+	P0 p0;
+	Sequence<P...> p;
+	constexpr Sequence(P0 p0, P... p): p0(p0), p(p...) {}
 };
 
 template <class... P> class Choice;
@@ -108,9 +108,9 @@ public:
 };
 template <class P0, class... P> class Choice<P0, P...> {
 public:
-	P0 head;
-	Choice<P...> tail;
-	constexpr Choice(P0 head, P... tail): head(head), tail(tail...) {}
+	P0 p0;
+	Choice<P...> p;
+	constexpr Choice(P0 p0, P... p): p0(p0), p(p...) {}
 };
 
 template <class P> class Repetition {
@@ -413,7 +413,7 @@ template <class C> Result parse_impl(const Sequence<>& p, Context& context, cons
 	return SUCCESS;
 }
 template <class P0, class... P, class C> Result parse_impl(const Sequence<P0, P...>& p, Context& context, const C& callback, const SavePoint& save_point) {
-	const Result result = parse_impl(p.head, context, callback);
+	const Result result = parse_impl(p.p0, context, callback);
 	if (result == ERROR) {
 		return ERROR;
 	}
@@ -421,7 +421,7 @@ template <class P0, class... P, class C> Result parse_impl(const Sequence<P0, P.
 		context.restore(save_point);
 		return FAILURE;
 	}
-	return parse_impl(p.tail, context, callback, save_point);
+	return parse_impl(p.p, context, callback, save_point);
 }
 template <class... P, class C> Result parse_impl(const Sequence<P...>& p, Context& context, const C& callback) {
 	return parse_impl(p, context, callback, context.save());
@@ -431,12 +431,12 @@ template <class C> Result parse_impl(const Choice<>& p, Context& context, const 
 	return FAILURE;
 }
 template <class P0, class... P, class C> Result parse_impl(const Choice<P0, P...>& p, Context& context, const C& callback) {
-	const Result result = parse_impl(p.head, context, callback);
+	const Result result = parse_impl(p.p0, context, callback);
 	if (result == ERROR) {
 		return ERROR;
 	}
 	if (result == FAILURE) {
-		return parse_impl(p.tail, context, callback);
+		return parse_impl(p.p, context, callback);
 	}
 	return SUCCESS;
 }

@@ -57,31 +57,31 @@ template <class P> enable_if_t<is_printer<P>::value> print_impl(const P& p, Cont
 	p.print(context);
 }
 
-template <class... T> class PrintTuple;
-template <> class PrintTuple<> {
+template <class... P> class Sequence;
+template <> class Sequence<> {
 public:
-	constexpr PrintTuple() {}
+	constexpr Sequence() {}
 	void print(Context& context) const {}
 	void print_formatted(Context& context, const char* s) const {
 		print_impl(s, context);
 	}
 };
-template <class T0, class... T> class PrintTuple<T0, T...> {
-	T0 t0;
-	PrintTuple<T...> t;
+template <class P0, class... P> class Sequence<P0, P...> {
+	P0 p0;
+	Sequence<P...> p;
 public:
-	constexpr PrintTuple(T0 t0, T... t): t0(t0), t(t...) {}
+	constexpr Sequence(P0 p0, P... p): p0(p0), p(p...) {}
 	void print(Context& context) const {
-		print_impl(t0, context);
-		t.print(context);
+		print_impl(p0, context);
+		p.print(context);
 	}
 	void print_formatted(Context& context, const char* s) const {
 		while (*s) {
 			if (*s == '%') {
 				++s;
 				if (*s != '%') {
-					print_impl(t0, context);
-					t.print_formatted(context, s);
+					print_impl(p0, context);
+					p.print_formatted(context, s);
 					return;
 				}
 			}
@@ -90,21 +90,21 @@ public:
 		}
 	}
 };
-template <class... T> constexpr PrintTuple<T...> print_tuple(T... t) {
-	return PrintTuple<T...>(t...);
+template <class... P> constexpr Sequence<P...> sequence(P... p) {
+	return Sequence<P...>(p...);
 }
 
-template <class... T> class Format {
-	PrintTuple<T...> t;
+template <class... P> class Format {
+	Sequence<P...> p;
 	const char* s;
 public:
-	constexpr Format(const char* s, T... t): t(t...), s(s) {}
+	constexpr Format(const char* s, P... p): p(p...), s(s) {}
 	void print(Context& context) const {
-		t.print_formatted(context, s);
+		p.print_formatted(context, s);
 	}
 };
-template <class... T> constexpr Format<T...> format(const char* s, T... t) {
-	return Format<T...>(s, t...);
+template <class... P> constexpr Format<P...> format(const char* s, P... p) {
+	return Format<P...>(s, p...);
 }
 
 template <class P> class Ln {
@@ -123,22 +123,22 @@ public:
 template <class P> constexpr Ln<P> ln(P p) {
 	return Ln<P>(p);
 }
-constexpr Ln<PrintTuple<>> ln() {
-	return ln(print_tuple());
+constexpr Ln<Sequence<>> ln() {
+	return ln(sequence());
 }
 
-template <class P> class Indent {
+template <class P> class Indented {
 	P p;
 public:
-	constexpr Indent(P p): p(p) {}
+	constexpr Indented(P p): p(p) {}
 	void print(Context& context) const {
 		context.increase_indentation();
 		print_impl(p, context);
 		context.decrease_indentation();
 	}
 };
-template <class P> constexpr Indent<P> indented(P p) {
-	return Indent<P>(p);
+template <class P> constexpr Indented<P> indented(P p) {
+	return Indented<P>(p);
 }
 
 template <class P> class Reference_ {
@@ -153,16 +153,16 @@ template <class P> constexpr Reference_<P> ref(const P& p) {
 	return Reference_<P>(p);
 }
 
-template <class F> class PrintFunctor {
+template <class F> class Functor {
 	F f;
 public:
-	constexpr PrintFunctor(F f): f(f) {}
+	constexpr Functor(F f): f(f) {}
 	void print(Context& context) const {
 		f(context);
 	}
 };
-template <class F> constexpr PrintFunctor<F> print_functor(F f) {
-	return PrintFunctor<F>(f);
+template <class F> constexpr Functor<F> functor(F f) {
+	return Functor<F>(f);
 }
 
 template <class T, T base, char fill_char> class Number {
@@ -192,18 +192,18 @@ public:
 		return get_width(n);
 	}
 };
-constexpr Number<unsigned int, 10, ' '> print_number(unsigned int n, unsigned int min_width = 0) {
+constexpr Number<unsigned int, 10, ' '> number(unsigned int n, unsigned int min_width = 0) {
 	return Number<unsigned int, 10, ' '>(n, min_width);
 }
 
-constexpr Number<unsigned int, 16, '0'> print_hexadecimal(unsigned int n, unsigned int min_width = 0) {
+constexpr Number<unsigned int, 16, '0'> hexadecimal(unsigned int n, unsigned int min_width = 0) {
 	return Number<unsigned int, 16, '0'>(n, min_width);
 }
-template <class T> constexpr Number<std::uintptr_t, 16, '0'> print_pointer(const T* ptr) {
+template <class T> constexpr Number<std::uintptr_t, 16, '0'> pointer(const T* ptr) {
 	return Number<std::uintptr_t, 16, '0'>(reinterpret_cast<std::uintptr_t>(ptr), sizeof(T*) * 2);
 }
 
-constexpr Number<unsigned int, 8, '0'> print_octal(unsigned int n, unsigned int min_width = 0) {
+constexpr Number<unsigned int, 8, '0'> octal(unsigned int n, unsigned int min_width = 0) {
 	return Number<unsigned int, 8, '0'>(n, min_width);
 }
 
@@ -215,7 +215,7 @@ public:
 	constexpr SGRPrinter(unsigned int enable, unsigned int disable, P p): enable(enable), disable(disable), p(p) {}
 	void print(Context& context) const {
 		constexpr const char* CSI = "\x1B[";
-		print_impl(print_tuple(CSI, print_number(enable), 'm', p, CSI, print_number(disable), 'm'), context);
+		print_impl(sequence(CSI, number(enable), 'm', p, CSI, number(disable), 'm'), context);
 	}
 };
 
@@ -289,7 +289,7 @@ class Plural {
 public:
 	constexpr Plural(const char* word, unsigned int count): word(word), count(count) {}
 	void print(Context& context) const {
-		print_impl(print_number(count), context);
+		print_impl(number(count), context);
 		context.print(' ');
 		print_impl(word, context);
 		if (count != 1) {
@@ -297,7 +297,7 @@ public:
 		}
 	}
 };
-constexpr Plural print_plural(const char* word, unsigned int count) {
+constexpr Plural plural(const char* word, unsigned int count) {
 	return Plural(word, count);
 }
 
@@ -342,7 +342,7 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 		}
 	}
 	const unsigned int last_line_number = line_number;
-	const unsigned int line_number_width = print_number(last_line_number).get_width();
+	const unsigned int line_number_width = number(last_line_number).get_width();
 
 	print_diagnostic<Type>(context, p);
 
@@ -357,7 +357,7 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 
 			constexpr unsigned int TAB_WIDTH = 4;
 
-			print_impl(format(" % | ", print_number(line_number, line_number_width)), context);
+			print_impl(format(" % | ", number(line_number, line_number_width)), context);
 			unsigned int spaces = 0;
 			unsigned int carets = 0;
 			unsigned int column = 0;
@@ -387,7 +387,7 @@ template <class Type, class P> void print_diagnostic(Context& context, const Str
 			print_impl(ln(), context);
 
 			print_impl(format(" % | ", repeat(' ', line_number_width)), context);
-			print_impl(print_tuple(repeat(' ', spaces), bold(Type::color(repeat('^', carets)))), context);
+			print_impl(sequence(repeat(' ', spaces), bold(Type::color(repeat('^', carets)))), context);
 			print_impl(ln(), context);
 
 		}

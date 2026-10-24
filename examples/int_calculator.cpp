@@ -118,6 +118,6 @@ int main(int argc, const char** argv) {
 			print(StandardError::get(), ln(bold(yellow("failure"))));
 			return 1;
 		}
-		print(ln(format("% %", bold(green("success:")), print_number(value))));
+		print(ln(format("% %", bold(green("success:")), printer::number(value))));
 	}
 }
