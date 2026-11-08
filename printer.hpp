@@ -61,64 +61,58 @@ template <class... P> class Sequence;
 template <> class Sequence<> {
 public:
 	constexpr Sequence() {}
-	void print(Context& context) const {}
-	void print_formatted(Context& context, const char* s) const {
-		print_impl(s, context);
-	}
 };
 template <class P0, class... P> class Sequence<P0, P...> {
+public:
 	P0 p0;
 	Sequence<P...> p;
-public:
 	constexpr Sequence(P0 p0, P... p): p0(p0), p(p...) {}
-	void print(Context& context) const {
-		print_impl(p0, context);
-		p.print(context);
-	}
-	void print_formatted(Context& context, const char* s) const {
-		while (*s) {
-			if (*s == '%') {
-				++s;
-				if (*s != '%') {
-					print_impl(p0, context);
-					p.print_formatted(context, s);
-					return;
-				}
-			}
-			context.print(*s);
-			++s;
-		}
-	}
 };
 template <class... P> constexpr Sequence<P...> sequence(P... p) {
 	return Sequence<P...>(p...);
 }
 
+inline void print_impl(const Sequence<>& p, Context& context) {}
+template <class P0, class... P> void print_impl(const Sequence<P0, P...>& p, Context& context) {
+	print_impl(p.p0, context);
+	print_impl(p.p, context);
+}
+
 template <class... P> class Format {
+public:
 	Sequence<P...> p;
 	const char* s;
-public:
 	constexpr Format(const char* s, P... p): p(p...), s(s) {}
-	void print(Context& context) const {
-		p.print_formatted(context, s);
-	}
 };
 template <class... P> constexpr Format<P...> format(const char* s, P... p) {
 	return Format<P...>(s, p...);
 }
 
-template <class P> class Ln {
-	P p;
-public:
-	constexpr Ln(P p): p(p) {}
-	void print(Context& context) const {
-		print_impl(p, context);
-		#ifdef HTML
-		print_impl("<br/>", context);
-		#else
-		print_impl('\n', context);
-		#endif
+inline void print_formatted(const Sequence<>& p, const char* s, Context& context) {
+	print_impl(s, context);
+}
+template <class P0, class... P> void print_formatted(const Sequence<P0, P...>& p, const char* s, Context& context) {
+	while (*s) {
+		if (*s == '%') {
+			++s;
+			if (*s != '%') {
+				print_impl(p.p0, context);
+				print_formatted(p.p, s, context);
+				return;
+			}
+		}
+		context.print(*s);
+		++s;
 	}
+}
+template <class... P> void print_impl(const Format<P...>& p, Context& context) {
+	print_formatted(p.p, p.s, context);
+}
+
+template <class P> class Ln {
+public:
+	P p;
+	constexpr Ln(P p): p(p) {}
 };
 template <class P> constexpr Ln<P> ln(P p) {
 	return Ln<P>(p);
@@ -127,42 +121,54 @@ constexpr Ln<Sequence<>> ln() {
 	return ln(sequence());
 }
 
+template <class P> void print_impl(const Ln<P>& p, Context& context) {
+	print_impl(p.p, context);
+	#ifdef HTML
+	print_impl("<br/>", context);
+	#else
+	print_impl('\n', context);
+	#endif
+}
+
 template <class P> class Indented {
-	P p;
 public:
+	P p;
 	constexpr Indented(P p): p(p) {}
-	void print(Context& context) const {
-		context.increase_indentation();
-		print_impl(p, context);
-		context.decrease_indentation();
-	}
 };
 template <class P> constexpr Indented<P> indented(P p) {
 	return Indented<P>(p);
 }
 
+template <class P> void print_impl(const Indented<P>& p, Context& context) {
+	context.increase_indentation();
+	print_impl(p.p, context);
+	context.decrease_indentation();
+}
+
 template <class P> class Reference_ {
-	const P* p;
 public:
+	const P* p;
 	constexpr Reference_(const P& p): p(&p) {}
-	void print(Context& context) const {
-		print_impl(*p, context);
-	}
 };
 template <class P> constexpr Reference_<P> ref(const P& p) {
 	return Reference_<P>(p);
 }
 
+template <class P> void print_impl(const Reference_<P>& p, Context& context) {
+	print_impl(*p.p, context);
+}
+
 template <class F> class Functor {
-	F f;
 public:
+	F f;
 	constexpr Functor(F f): f(f) {}
-	void print(Context& context) const {
-		f(context);
-	}
 };
 template <class F> constexpr Functor<F> functor(F f) {
 	return Functor<F>(f);
+}
+
+template <class F> void print_impl(const Functor<F>& p, Context& context) {
+	p.f(context);
 }
 
 template <class T, T base, char fill_char> class Number {
@@ -269,36 +275,38 @@ constexpr auto cyan = SGRFunctor(36, 39);
 #endif
 
 template <class P> class Repeat {
+public:
 	P p;
 	unsigned int count;
-public:
 	constexpr Repeat(P p, unsigned int count): p(p), count(count) {}
-	void print(Context& context) const {
-		for (unsigned int i = 0; i < count; ++i) {
-			print_impl(p, context);
-		}
-	}
 };
 template <class P> constexpr Repeat<P> repeat(P p, unsigned int count) {
 	return Repeat<P>(p, count);
 }
 
+template <class P> void print_impl(const Repeat<P>& p, Context& context) {
+	for (unsigned int i = 0; i < p.count; ++i) {
+		print_impl(p.p, context);
+	}
+}
+
 class Plural {
+public:
 	const char* word;
 	unsigned int count;
-public:
 	constexpr Plural(const char* word, unsigned int count): word(word), count(count) {}
-	void print(Context& context) const {
-		print_impl(number(count), context);
-		context.print(' ');
-		print_impl(word, context);
-		if (count != 1) {
-			context.print('s');
-		}
-	}
 };
 constexpr Plural plural(const char* word, unsigned int count) {
 	return Plural(word, count);
+}
+
+inline void print_impl(const Plural& p, Context& context) {
+	print_impl(number(p.count), context);
+	context.print(' ');
+	print_impl(p.word, context);
+	if (p.count != 1) {
+		context.print('s');
+	}
 }
 
 struct DiagnosticType {
@@ -428,6 +436,9 @@ template <class P> void println(BufferedOutput& output, P&& p) {
 }
 template <class P> void println(P&& p) {
 	println(StandardOutput::get(), std::forward<P>(p));
+}
+inline void println() {
+	println(printer::sequence());
 }
 template <class P> std::string print_to_string(P&& p) {
 	std::string s;
